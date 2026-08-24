@@ -850,6 +850,12 @@ const ENCEINTES_ENR = [
   { app: "Congélateur",       label: "Armoire négative" }
 ];
 
+const DISTRIBUTION_ENCEINTES = [
+  { nom: "Bain marie",                   type: "chaud" },
+  { nom: "Vitrine Entrées",              type: "froid" },
+  { nom: "Vitrine Fromages/Desserts",    type: "froid" }
+];
+
 let enrIndexActuel; // undefined = jamais initialisée, -1 = "aujourd'hui" virtuel, sinon index réel
 
 function afficherENRAuto() {
@@ -951,8 +957,11 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   html += `<div class="enr-titre-section">Enceintes de distribution</div>
     <div id="enr-distribution-liste" class="enr-distribution-liste">${renderDistributionListe(releveDistribution)}</div>
     <div class="enr-distribution-form">
-      <label>Nom
-        <input type="text" id="enr-dist-nom" placeholder="Ex. Vitrine froide, Étuve 1">
+      <label>Enceinte
+        <select id="enr-dist-nom">
+          <option value="" disabled selected>Choisir une enceinte…</option>
+          ${DISTRIBUTION_ENCEINTES.map(e => `<option value="${e.nom}">${e.nom}</option>`).join("")}
+        </select>
       </label>
       <label>Type
         <select id="enr-dist-type">
@@ -963,7 +972,7 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
       <label>Température (°C)
         <input type="number" step="0.1" id="enr-dist-temp" placeholder="0.0">
       </label>
-      <button type="button" id="enr-dist-btn" class="btn-secondary">+ Ajouter cette enceinte</button>
+      <button type="button" id="enr-dist-btn" class="btn-secondary">+ Ajouter ce relevé</button>
     </div>`;
 
   const platsFroids = platsAvecType.filter(p => p.type === "froid");
@@ -1003,6 +1012,10 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   });
 
   // -- Listener ajout enceinte de distribution --
+  document.getElementById("enr-dist-nom").addEventListener("change", (e) => {
+    const config = DISTRIBUTION_ENCEINTES.find(d => d.nom === e.target.value);
+    if (config) document.getElementById("enr-dist-type").value = config.type;
+  });
   document.getElementById("enr-dist-btn").addEventListener("click", () => ajouterDistributionENR(semaine, jour));
 
   // -- Listener constatations --
