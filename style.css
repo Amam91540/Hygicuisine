@@ -333,7 +333,7 @@ tbody tr:last-child td{border-bottom:none}
 }
 
 /* Réception de la marchandise */
-.enr-reception-form label{gap:6px}
+.enr-reception-form label{gap:6px} test
 .enr-reception-photo-nom{
   font-size:12px;color:var(--ink-soft);display:inline-block;margin-top:8px;
 }
