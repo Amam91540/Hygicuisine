@@ -996,25 +996,20 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   html += `</div>`;
 
   html += `<div class="enr-titre-section">Enceintes de distribution</div>
-    <div id="enr-distribution-liste" class="enr-distribution-liste">${renderDistributionListe(releveDistribution)}</div>
-    <div class="enr-distribution-form">
-      <label>Enceinte
-        <select id="enr-dist-nom">
-          <option value="" disabled selected>Choisir une enceinte…</option>
-          ${DISTRIBUTION_ENCEINTES.map(e => `<option value="${e.nom}">${e.nom}</option>`).join("")}
-        </select>
-      </label>
-      <label>Type
-        <select id="enr-dist-type">
-          <option value="froid">Froid</option>
-          <option value="chaud">Chaud</option>
-        </select>
-      </label>
-      <label>Température (°C)
-        <input type="number" step="0.1" id="enr-dist-temp" placeholder="0.0">
-      </label>
-      <button type="button" id="enr-dist-btn" class="btn-secondary">+ Ajouter ce relevé</button>
+    <div class="enr-enceintes-liste">`;
+  DISTRIBUTION_ENCEINTES.forEach(e => {
+    const releve = dernierReleveDistribution(releveDistribution, e.nom);
+    html += `<div class="enr-enceinte-card">
+      <div class="enr-enceinte-nom">${e.nom} <span class="enr-enceinte-type">(${e.type === "chaud" ? "Chaud" : "Froid"})</span></div>
+      <div class="enr-enceinte-champs enr-enceinte-champs-simple">
+        <div class="enr-enceinte-champ">
+          <label>Avant service</label>
+          ${celluleDistributionENR(e.nom, e.type, releve)}
+        </div>
+      </div>
     </div>`;
+  });
+  html += `</div>`;
 
   const platsFroids = platsAvecType.filter(p => p.type === "froid");
   const platsChauds = platsAvecType.filter(p => p.type === "chaud");
@@ -1052,12 +1047,10 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     input.addEventListener("change", () => enregistrerTempEnceinteENR(input, semaine, jour));
   });
 
-  // -- Listener ajout enceinte de distribution --
-  document.getElementById("enr-dist-nom").addEventListener("change", (e) => {
-    const config = DISTRIBUTION_ENCEINTES.find(d => d.nom === e.target.value);
-    if (config) document.getElementById("enr-dist-type").value = config.type;
+  // -- Listeners enceintes de distribution --
+  cont.querySelectorAll(".enr-mini-input[data-distribution]").forEach(input => {
+    input.addEventListener("change", () => enregistrerTempDistributionENR(input, semaine, jour));
   });
-  document.getElementById("enr-dist-btn").addEventListener("click", () => ajouterDistributionENR(semaine, jour));
 
   // -- Listener constatations --
   document.getElementById("enr-constat-btn").addEventListener("click", () => enregistrerConstatationENR(semaine, jour));
@@ -1094,30 +1087,29 @@ async function enregistrerTempEnceinteENR(input, semaine, jour) {
   }
 }
 
-function renderDistributionListe(releves) {
-  if (!releves || releves.length === 0) return '<p class="table-empty">Aucun relevé pour ce jour.</p>';
-  return releves.map(r => `
-    <div class="enr-distribution-item">
-      <span>${r.nom} — ${r.type === "chaud" ? "Chaud" : "Froid"}</span>
-      <span class="${String(r.conforme).includes("NON") ? "cell-bad" : "cell-ok"}">${r.temperature}°C à ${r.heure}</span>
-    </div>`).join("");
+// Dernier relevé connu pour une enceinte de distribution donnée (le tableau
+// getTempsDistributionJour renvoie toutes les entrées du jour, la dernière fait foi).
+function dernierReleveDistribution(releves, nom) {
+  if (!releves) return null;
+  const correspondants = releves.filter(r => r.nom === nom);
+  return correspondants.length ? correspondants[correspondants.length - 1] : null;
 }
 
-async function ajouterDistributionENR(semaine, jour) {
-  const nom = document.getElementById("enr-dist-nom").value.trim();
-  const type = document.getElementById("enr-dist-type").value;
-  const temp = document.getElementById("enr-dist-temp").value;
-  if (!nom || !temp) {
-    toast("Indique un nom et une température.", true);
-    return;
-  }
+function celluleDistributionENR(nom, type, releve) {
+  const valeur = releve ? releve.temperature : "";
+  const statut = releve ? (String(releve.conforme).includes("NON")
+    ? `<div class="enr-mini-statut cell-bad">⚠ ${releve.heure}</div>`
+    : `<div class="enr-mini-statut cell-ok">✓ ${releve.heure}</div>`) : "";
+  return `<input type="number" step="0.1" class="enr-mini-input" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0">${statut}`;
+}
+
+async function enregistrerTempDistributionENR(input, semaine, jour) {
+  if (!input.value) return;
+  const nom = input.dataset.distribution;
+  const type = input.dataset.type;
   try {
-    await apiCall("addTempDistribution", { semaine, jour, nom, type, temperature: temp, personne: PRENOM });
-    document.getElementById("enr-dist-nom").value = "";
-    document.getElementById("enr-dist-temp").value = "";
-    const data = await apiCall("getTempsDistributionJour", { semaine, jour });
-    document.getElementById("enr-distribution-liste").innerHTML = renderDistributionListe(data.releves);
-    toast("Enceinte de distribution enregistrée");
+    const res = await apiCall("addTempDistribution", { semaine, jour, nom, type, temperature: input.value, personne: PRENOM });
+    toast(res.conforme ? `${nom} enregistrée` : `${nom} — hors norme, enregistrée quand même`, !res.conforme);
   } catch (err) {
     toast("Erreur : " + err.message, true);
   }
