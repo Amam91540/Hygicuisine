@@ -194,7 +194,7 @@
 
     <!-- ================= MENU ================= -->
     <section id="section-menu" class="panel">
-      <h2 class="panel-title">Menu des semaines</h2>
+      <h2 class="panel-title">Menu</h2>
 
       <div class="card-form">
         <label>Importer un fichier de menu (.xlsx)
@@ -209,9 +209,30 @@
       </div>
       <div id="menu-import-result" class="result-badge"></div>
 
-      <div class="subtabs" id="menu-semaine-tabs" style="margin-top:20px"></div>
-      <div id="menu-affichage" class="table-wrap">
-        <p class="table-empty">Importe un fichier, ou consulte le menu déjà enregistré.</p>
+      <div class="subtabs" style="margin-top:20px">
+        <button class="subtab-btn active" data-menuview="jour">Jour</button>
+        <button class="subtab-btn" data-menuview="semaine">Semaine (tableau)</button>
+      </div>
+
+      <div id="menu-vue-jour" class="subpanel active">
+        <div class="jour-nav">
+          <button id="jour-prev" class="jour-arrow" aria-label="Jour précédent">◀</button>
+          <div class="jour-label">
+            <div id="jour-nom" class="jour-nom">—</div>
+            <div id="jour-semaine" class="jour-semaine-label">—</div>
+          </div>
+          <button id="jour-next" class="jour-arrow" aria-label="Jour suivant">▶</button>
+        </div>
+        <div id="jour-plats-liste" class="plats-liste">
+          <p class="table-empty">Importe un menu pour commencer.</p>
+        </div>
+      </div>
+
+      <div id="menu-vue-semaine" class="subpanel">
+        <div class="subtabs" id="menu-semaine-tabs"></div>
+        <div id="menu-affichage" class="table-wrap">
+          <p class="table-empty">Importe un fichier, ou consulte le menu déjà enregistré.</p>
+        </div>
       </div>
     </section>
 
@@ -224,6 +245,8 @@
         <button class="subtab-btn" data-hist="photos">Traçabilité</button>
         <button class="subtab-btn" data-hist="stocks">Stocks</button>
         <button class="subtab-btn" data-hist="envois">Envois</button>
+        <button class="subtab-btn" data-hist="temp_plats_etapes">Suivi plats</button>
+        <button class="subtab-btn" data-hist="photos_plats">Photos plats</button>
       </div>
       <div id="hist-table-wrap" class="table-wrap">
         <p class="table-empty">Chargement…</p>
@@ -234,6 +257,29 @@
 </div>
 
 <div id="toast" class="toast hidden"></div>
+
+<div id="plat-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <button id="plat-modal-close" class="modal-close" aria-label="Fermer">✕</button>
+    <h3 id="plat-modal-titre" class="modal-titre">—</h3>
+    <p id="plat-modal-souscat" class="modal-souscat-info"></p>
+
+    <div class="segmented" id="plat-modal-type">
+      <button type="button" class="seg-btn" data-val="chaud">Plat chaud</button>
+      <button type="button" class="seg-btn" data-val="froid">Produit froid</button>
+    </div>
+
+    <h4 class="modal-souscat">Températures par étape</h4>
+    <div id="plat-modal-etapes" class="etapes-liste"></div>
+
+    <h4 class="modal-souscat">Photos de traçabilité</h4>
+    <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer">
+      + Ajouter une photo (paquet, ingrédients…)
+      <input type="file" id="plat-modal-photo" accept="image/*" capture="environment" class="hidden">
+    </label>
+    <div id="plat-modal-photos" class="photos-galerie"></div>
+  </div>
+</div>
 
 <script src="config.js"></script>
 <script src="app.js"></script>
