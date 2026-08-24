@@ -310,16 +310,21 @@ tbody tr:last-child td{border-bottom:none}
 .enr-mini-input:focus{outline:2px solid var(--teal);outline-offset:1px}
 .enr-mini-statut{font-size:11.5px;margin-top:6px;font-weight:600}
 
-/* Plats : réutilise le style .etape-row de la fiche plat pour rester cohérent */
-.enr-plat-bloc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
-.enr-plat-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-.enr-plat-nom{font-size:16px;font-weight:700}
-.enr-plat-toggle{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex-shrink:0}
-.enr-plat-toggle button{
-  padding:8px 14px;font-size:12.5px;font-weight:600;border:none;background:#FBFDFD;color:var(--ink-soft);cursor:pointer;
+/* Plats : tableau façon classeur Excel — produit en 1re colonne, une colonne par étape */
+.enr-plats-table-wrap{margin-bottom:14px}
+.enr-plats-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.enr-plats-table th{
+  background:#F1F5F5;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.02em;
+  color:var(--ink-soft);padding:9px 8px;text-align:center;font-weight:600;white-space:nowrap;
 }
-.enr-plat-toggle button.active{background:var(--teal);color:#fff}
-.enr-etapes-liste{display:flex;flex-direction:column;gap:10px}
+.enr-plats-table td{padding:8px;border-top:1px solid var(--line);text-align:center;min-width:88px}
+.enr-plats-table-nom{
+  text-align:left;font-size:13px;font-weight:700;color:var(--ink);min-width:150px;padding-left:12px!important;
+}
+.enr-plat-type-toggle{
+  display:block;margin-top:4px;background:none;border:1px solid var(--line);border-radius:7px;
+  padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--teal-dark);cursor:pointer;
+}
 
 .enr-constat-grid{display:flex;flex-direction:column;gap:14px}
 .enr-constat-grid label{font-size:13px;font-weight:600;color:var(--ink-soft);display:flex;flex-direction:column;gap:7px}
