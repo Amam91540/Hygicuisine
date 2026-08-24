@@ -317,7 +317,7 @@ tbody tr:last-child td{border-bottom:none}
   background:#F1F5F5;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.02em;
   color:var(--ink-soft);padding:9px 8px;text-align:center;font-weight:600;white-space:nowrap;
 }
-.enr-plats-table td{padding:8px;border-top:1px solid var(--line);text-align:center;min-width:88px}
+.enr-plats-table td{padding:8px;border-top:1px solid var(--line);text-align:center;min-width:100px}
 .enr-plats-table-nom{
   text-align:left;font-size:13px;font-weight:700;color:var(--ink);min-width:150px;padding-left:12px!important;
 }
@@ -325,6 +325,20 @@ tbody tr:last-child td{border-bottom:none}
   display:block;margin-top:4px;background:none;border:1px solid var(--line);border-radius:7px;
   padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--teal-dark);cursor:pointer;
 }
+.enr-plat-ta{
+  font-family:var(--mono);font-weight:700;color:var(--ink-soft);font-size:13px;background:#F1F5F5;
+}
+.enr-mini-input.enr-plat-heure-input{
+  margin-top:6px;font-size:14px;font-weight:500;padding:7px;
+}
+
+/* Réception de la marchandise */
+.enr-reception-form label{gap:6px}
+.enr-reception-photo-nom{
+  font-size:12px;color:var(--ink-soft);display:inline-block;margin-top:8px;
+}
+.enr-reception-photo-nom a{color:var(--teal-dark);font-weight:600}
+
 
 .enr-constat-grid{display:flex;flex-direction:column;gap:14px}
 .enr-constat-grid label{font-size:13px;font-weight:600;color:var(--ink-soft);display:flex;flex-direction:column;gap:7px}
