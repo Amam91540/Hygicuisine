@@ -296,7 +296,9 @@ tbody tr:last-child td{border-bottom:none}
   background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
 }
 .enr-enceinte-nom{font-size:14.5px;font-weight:700;margin-bottom:10px}
+.enr-enceinte-type{font-size:11.5px;font-weight:500;color:var(--ink-soft);text-transform:none}
 .enr-enceinte-champs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.enr-enceinte-champs-simple{grid-template-columns:1fr}
 .enr-enceinte-champ label{
   display:block;font-size:11.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;
   text-transform:uppercase;letter-spacing:.03em;
@@ -307,22 +309,6 @@ tbody tr:last-child td{border-bottom:none}
 }
 .enr-mini-input:focus{outline:2px solid var(--teal);outline-offset:1px}
 .enr-mini-statut{font-size:11.5px;margin-top:6px;font-weight:600}
-
-/* Enceintes de distribution */
-.enr-distribution-liste{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
-.enr-distribution-item{
-  display:flex;justify-content:space-between;align-items:center;background:var(--surface);
-  border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;
-}
-.enr-distribution-form{
-  display:flex;flex-direction:column;gap:12px;
-  background:#F9FBFB;border:1px dashed var(--teal);border-radius:14px;padding:16px;
-}
-.enr-distribution-form label{font-size:12px;font-weight:600;color:var(--ink-soft);display:flex;flex-direction:column;gap:6px}
-.enr-distribution-form input, .enr-distribution-form select{
-  border:1px solid var(--line);border-radius:9px;padding:11px;font-size:14.5px;font-family:var(--body);width:100%;
-}
-.enr-distribution-form button{width:100%;padding:12px;font-size:13.5px;margin-top:2px}
 
 /* Plats : réutilise le style .etape-row de la fiche plat pour rester cohérent */
 .enr-plat-bloc{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
