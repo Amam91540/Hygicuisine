@@ -1,3 +1,4 @@
+
 // ================= ÉTAT =================
 let CODE_ACCES = "";
 let PRENOM = "";
@@ -302,6 +303,54 @@ document.getElementById("form-etat").addEventListener("submit", async (e) => {
     document.getElementById("etat-lignes").innerHTML = "";
     document.getElementById("etat-lignes").appendChild(creerLigneProduit());
     toast("État des stocks envoyé");
+  } catch (err) {
+    resultEl.textContent = "Erreur : " + err.message;
+    resultEl.classList.add("bad");
+  }
+});
+
+// ================= PDF : BON DE LIVRAISON / ÉTAT DES STOCKS =================
+document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("stocks-result");
+  const lignes = lireLignes("liv-lignes");
+  if (lignes.length === 0) {
+    resultEl.textContent = "Ajoute au moins un produit.";
+    resultEl.className = "result-badge bad";
+    return;
+  }
+  resultEl.textContent = "Génération du PDF…";
+  resultEl.className = "result-badge";
+  try {
+    const data = await apiCall("genererPdfBonLivraison", {
+      fournisseur: document.getElementById("liv-fournisseur").value,
+      lignes,
+      remarqueGenerale: document.getElementById("liv-remarque").value,
+      personne: PRENOM
+    });
+    resultEl.textContent = "✓ PDF prêt, ouverture…";
+    resultEl.classList.add("ok");
+    window.open(data.url, "_blank");
+  } catch (err) {
+    resultEl.textContent = "Erreur : " + err.message;
+    resultEl.classList.add("bad");
+  }
+});
+
+document.getElementById("etat-pdf-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("stocks-result");
+  const lignes = lireLignes("etat-lignes");
+  if (lignes.length === 0) {
+    resultEl.textContent = "Ajoute au moins un produit.";
+    resultEl.className = "result-badge bad";
+    return;
+  }
+  resultEl.textContent = "Génération du PDF…";
+  resultEl.className = "result-badge";
+  try {
+    const data = await apiCall("genererPdfEtatStocks", { lignes, personne: PRENOM });
+    resultEl.textContent = "✓ PDF prêt, ouverture…";
+    resultEl.classList.add("ok");
+    window.open(data.url, "_blank");
   } catch (err) {
     resultEl.textContent = "Erreur : " + err.message;
     resultEl.classList.add("bad");
@@ -1089,6 +1138,30 @@ async function enregistrerConstatationENR(semaine, jour) {
     btn.textContent = "Enregistrer";
   }
 }
+
+document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("enr-pdf-result");
+  if (enrIndexActuel === undefined || enrIndexActuel === -1) {
+    resultEl.textContent = "Sélectionne d'abord un jour avec un menu.";
+    resultEl.className = "result-badge bad";
+    return;
+  }
+  const { semaine, jour } = joursDisponibles[enrIndexActuel];
+  const dateJour = calculerDateJour(semaine, jour);
+  resultEl.textContent = "Génération du PDF…";
+  resultEl.className = "result-badge";
+  try {
+    const data = await apiCall("genererPdfENR", {
+      semaine, jour, date: dateJour ? Utilities_formatDateFr(dateJour) : ""
+    });
+    resultEl.textContent = "✓ PDF prêt, ouverture…";
+    resultEl.classList.add("ok");
+    window.open(data.url, "_blank");
+  } catch (err) {
+    resultEl.textContent = "Erreur : " + err.message;
+    resultEl.classList.add("bad");
+  }
+});
 
 // ================= HISTORIQUE =================
 let currentHistTab = "temp_plats";
