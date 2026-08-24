@@ -817,7 +817,6 @@ let enrIndexActuel; // undefined = jamais initialisée, -1 = "aujourd'hui" virtu
 function afficherENRAuto() {
   if (joursDisponibles.length === 0) {
     document.getElementById("enr-jour-nom").textContent = "—";
-    document.getElementById("enr-jour-semaine").textContent = "";
     document.getElementById("enr-contenu").innerHTML = '<p class="table-empty">Importe un menu pour commencer.</p>';
     enrIndexActuel = -1;
     return;
@@ -828,7 +827,6 @@ function afficherENRAuto() {
   } else {
     const aujourdhui = new Date();
     document.getElementById("enr-jour-nom").textContent = `${NOMS_JOURS_SEMAINE[aujourdhui.getDay()]} ${aujourdhui.getDate()}`;
-    document.getElementById("enr-jour-semaine").textContent = "";
     document.getElementById("enr-contenu").innerHTML = '<p class="table-empty">Pas de menu sélectionné pour aujourd\'hui.</p>';
     enrIndexActuel = -1;
   }
@@ -840,7 +838,6 @@ function afficherENRParIndex(idx) {
   const { semaine, jour } = joursDisponibles[idx];
   const dateJour = calculerDateJour(semaine, jour);
   document.getElementById("enr-jour-nom").textContent = dateJour ? `${jour} ${dateJour.getDate()}` : jour;
-  document.getElementById("enr-jour-semaine").textContent = semaine;
   construireFeuilleENR(semaine, jour, dateJour);
 }
 
@@ -1095,6 +1092,14 @@ async function enregistrerTempPlatTableENR(input, semaine, jour) {
   const inputTemp = cellule.querySelector(".enr-plat-temp-input");
   const inputHeure = cellule.querySelector(".enr-plat-heure-input");
   if (!inputTemp.value) return; // rien à enregistrer sans température
+
+  // Remplit l'heure automatiquement dès qu'une température est saisie, mais seulement
+  // si le champ est encore vide — une heure déjà modifiée à la main n'est jamais écrasée.
+  if (inputHeure && !inputHeure.value) {
+    const maintenant = new Date();
+    inputHeure.value = `${String(maintenant.getHours()).padStart(2, "0")}:${String(maintenant.getMinutes()).padStart(2, "0")}`;
+  }
+
   const statut = cellule.querySelector(".enr-mini-statut");
   try {
     const res = await apiCall("addTempPlatEtape", {
@@ -1232,6 +1237,11 @@ document.querySelectorAll('#hist-tabs .subtab-btn').forEach(btn => {
   });
 });
 
+// Colonnes à masquer par onglet (les données restent stockées, juste pas affichées).
+const COLONNES_MASQUEES_HISTORIQUE = {
+  feuille_enr: ["Date génération", "Heure génération", "Semaine"]
+};
+
 async function chargerHistorique(onglet) {
   const wrap = document.getElementById("hist-table-wrap");
   wrap.innerHTML = '<p class="table-empty">Chargement…</p>';
@@ -1241,12 +1251,22 @@ async function chargerHistorique(onglet) {
       wrap.innerHTML = '<p class="table-empty">Aucune donnée pour le moment.</p>';
       return;
     }
+
+    const colonnesAMasquer = COLONNES_MASQUEES_HISTORIQUE[onglet] || [];
+    const indicesAffiches = data.entetes
+      .map((h, i) => ({ h, i }))
+      .filter(x => !colonnesAMasquer.includes(x.h))
+      .map(x => x.i);
+    const peutSupprimer = onglet === "temp_enceintes";
+
     let html = "<table><thead><tr>";
-    data.entetes.forEach(h => { html += `<th>${h}</th>`; });
+    indicesAffiches.forEach(i => { html += `<th>${data.entetes[i]}</th>`; });
+    if (peutSupprimer) html += `<th></th>`;
     html += "</tr></thead><tbody>";
-    data.lignes.forEach(row => {
+    data.lignes.forEach((row, rowIdx) => {
       html += "<tr>";
-      row.forEach((cell, i) => {
+      indicesAffiches.forEach(i => {
+        const cell = row[i];
         const isConformeCol = data.entetes[i] === "Conforme";
         const cls = isConformeCol && String(cell).includes("NON") ? "cell-bad"
                   : isConformeCol ? "cell-ok" : "";
@@ -1254,11 +1274,35 @@ async function chargerHistorique(onglet) {
         const contenu = estLien ? `<a href="${cell}" target="_blank" rel="noopener">Ouvrir</a>` : cell;
         html += `<td class="${cls}">${contenu}</td>`;
       });
+      if (peutSupprimer) {
+        html += `<td><button type="button" class="hist-supprimer-btn" data-row="${rowIdx}">🗑</button></td>`;
+      }
       html += "</tr>";
     });
     html += "</tbody></table>";
     wrap.innerHTML = html;
+
+    if (peutSupprimer) {
+      wrap.querySelectorAll(".hist-supprimer-btn").forEach(btn => {
+        btn.addEventListener("click", () => supprimerLigneHistorique(onglet, data.lignes[parseInt(btn.dataset.row, 10)]));
+      });
+    }
   } catch (err) {
     wrap.innerHTML = `<p class="table-empty">Erreur de chargement : ${err.message}</p>`;
+  }
+}
+
+async function supprimerLigneHistorique(onglet, ligne) {
+  if (!confirm("Supprimer définitivement ce relevé ?")) return;
+  try {
+    const res = await apiCall("supprimerLigneHistorique", { onglet, ligne });
+    if (res.ok) {
+      toast("Relevé supprimé");
+      chargerHistorique(onglet);
+    } else {
+      toast("Erreur : " + (res.error || "suppression impossible"), true);
+    }
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
   }
 }
