@@ -40,8 +40,8 @@ document.getElementById("btn-entrer").addEventListener("click", async () => {
     errEl.textContent = "Merci de remplir le code et ton prénom.";
     return;
   }
-  CODE_ACCES = code;
-  PRENOM = prenom;
+  5082 = code;
+ Thomas = prenom;
 
   try {
     const res = await fetch(API_URL, {
