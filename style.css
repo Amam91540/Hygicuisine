@@ -197,6 +197,10 @@ tbody tr:last-child td{border-bottom:none}
 .cell-bad{color:var(--rust);font-weight:700}
 .cell-ok{color:var(--green);font-weight:600}
 .table-empty{padding:24px;text-align:center;color:var(--ink-soft);font-size:13px}
+.hist-supprimer-btn{
+  background:none;border:none;font-size:15px;cursor:pointer;padding:4px 8px;border-radius:6px;
+}
+.hist-supprimer-btn:active{background:#FBEAEA}
 
 /* ---------------- Toast ---------------- */
 .toast{
