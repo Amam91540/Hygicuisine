@@ -233,6 +233,13 @@ tbody tr:last-child td{border-bottom:none}
   padding:14px 16px;font-size:14.5px;font-weight:600;color:var(--ink);cursor:pointer;
 }
 .plat-card:active{background:#EAF4F1;border-color:var(--teal)}
+.plat-card-row{display:flex;gap:8px;align-items:stretch}
+.plat-card-flex{flex:1}
+.plat-photo-btn{
+  flex-shrink:0;width:48px;background:var(--teal);border:none;border-radius:12px;
+  font-size:19px;color:#fff;cursor:pointer;
+}
+.plat-photo-btn:active{background:var(--teal-dark)}
 
 /* ---------------- Modale fiche plat ---------------- */
 .modal-overlay{
