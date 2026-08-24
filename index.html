@@ -102,12 +102,31 @@
     <!-- ================= ENCEINTES ================= -->
     <section id="section-enceintes" class="panel">
       <h2 class="panel-title">Température — Enceintes réfrigérées</h2>
+      <p class="dashboard-note" style="margin-top:-10px;margin-bottom:16px">
+        Relevés à faire le matin et le soir, les lundi / mardi / jeudi / vendredi
+        (pas de relevé pendant les vacances scolaires de la Zone C, l'établissement étant fermé).
+      </p>
       <form id="form-enceinte" class="card-form">
-        <label>Nom de l'enceinte
-          <input type="text" id="enceinte-nom" required placeholder="Ex. Frigo n°1, Chambre froide">
+        <label>Enceinte
+          <select id="enceinte-nom" required>
+            <option value="" disabled selected>Choisir une enceinte…</option>
+            <option value="Réception">Réception</option>
+            <option value="Produits finis">Produits finis</option>
+            <option value="Produits laitiers">Produits laitiers</option>
+            <option value="Zone de préparation">Zone de préparation</option>
+            <option value="Frigo PAI">Frigo PAI</option>
+            <option value="Congélateur">Congélateur</option>
+          </select>
         </label>
+        <label>Moment
+          <div class="segmented" id="enceinte-moment-seg">
+            <button type="button" class="seg-btn active" data-val="matin">Matin</button>
+            <button type="button" class="seg-btn" data-val="soir">Soir</button>
+          </div>
+        </label>
+        <input type="hidden" id="enceinte-moment" value="matin">
         <label>Type
-          <div class="segmented">
+          <div class="segmented" id="enceinte-type-seg">
             <button type="button" class="seg-btn active" data-val="positif">Positif (0 à 4°C)</button>
             <button type="button" class="seg-btn" data-val="negatif">Négatif (-18°C)</button>
           </div>
