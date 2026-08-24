@@ -1239,7 +1239,8 @@ document.querySelectorAll('#hist-tabs .subtab-btn').forEach(btn => {
 
 // Colonnes à masquer par onglet (les données restent stockées, juste pas affichées).
 const COLONNES_MASQUEES_HISTORIQUE = {
-  feuille_enr: ["Date génération", "Heure génération", "Semaine"]
+  feuille_enr: ["Date génération", "Heure génération", "Semaine"],
+  temp_enceintes: ["Heure Matin", "Heure Soir", "Semaine", "Jour"]
 };
 
 async function chargerHistorique(onglet) {
