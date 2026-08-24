@@ -1,0 +1,216 @@
+:root{
+  --bg: #EEF2F2;
+  --surface: #FFFFFF;
+  --ink: #1F2B2E;
+  --ink-soft: #5C6B6E;
+  --line: #DCE4E4;
+  --teal: #0F6B5C;
+  --teal-dark: #0B5044;
+  --amber: #D98E04;
+  --rust: #B23A2A;
+  --green: #2F8F5B;
+  --mono: 'IBM Plex Mono', monospace;
+  --display: 'Space Grotesk', sans-serif;
+  --body: 'Inter', sans-serif;
+  --radius: 14px;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--body);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.hidden{display:none !important}
+
+/* ---------------- Lock screen ---------------- */
+.lock-screen{
+  min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(15,107,92,0.10), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(217,142,4,0.08), transparent 55%),
+    var(--bg);
+  padding:24px;
+}
+.lock-card{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:36px 28px;
+  width:100%;max-width:340px;
+  text-align:center;
+  box-shadow:0 20px 60px -30px rgba(15,43,46,0.35);
+}
+.lock-gauge{
+  width:64px;height:64px;margin:0 auto 16px;
+  border-radius:50%;
+  background:var(--teal);
+  color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:600;font-size:18px;
+  box-shadow:0 0 0 6px rgba(15,107,92,0.12);
+}
+.lock-card h1{font-family:var(--display);font-size:24px;margin:0 0 4px}
+.lock-sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px}
+.lock-card input{
+  width:100%;padding:13px 14px;margin-bottom:10px;
+  border:1px solid var(--line);border-radius:10px;
+  font-family:var(--body);font-size:15px;background:#F9FBFB;
+}
+.lock-card input:focus{outline:2px solid var(--teal);outline-offset:1px}
+.lock-error{color:var(--rust);font-size:13px;min-height:18px;margin:8px 0 0}
+
+/* ---------------- Layout ---------------- */
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:10;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{
+  width:34px;height:34px;border-radius:9px;background:var(--teal);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-weight:600;font-size:13px;
+}
+.brand-name{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-0.01em}
+.user-chip{
+  font-family:var(--mono);font-size:12px;color:var(--ink-soft);
+  background:#F1F5F5;padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+}
+
+.content{flex:1;padding:20px 20px 100px;max-width:720px;margin:0 auto;width:100%}
+
+.panel{display:none;animation:fadeIn .25s ease}
+.panel.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.panel-title{font-family:var(--display);font-size:22px;margin:4px 0 18px;letter-spacing:-0.01em}
+
+/* Bottom tab bar (mobile-first) */
+.tabbar{
+  position:fixed;bottom:0;left:0;right:0;
+  display:flex;background:var(--surface);
+  border-top:1px solid var(--line);
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+  z-index:10;
+}
+.tab-btn{
+  flex:1;background:none;border:none;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 2px;color:var(--ink-soft);font-family:var(--body);font-size:10.5px;
+  cursor:pointer;border-radius:10px;
+}
+.tab-btn .tab-ico{font-size:17px;line-height:1}
+.tab-btn.active{color:var(--teal);background:#EAF4F1}
+
+/* ---------------- Dashboard ---------------- */
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.quick-card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px 14px;text-align:left;cursor:pointer;
+  display:flex;flex-direction:column;gap:10px;
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.quick-card:active{transform:scale(0.98)}
+.quick-ico{font-size:22px;color:var(--teal)}
+.quick-label{font-size:14px;font-weight:600;color:var(--ink)}
+.dashboard-note{margin-top:18px;font-size:13px;color:var(--ink-soft);line-height:1.5}
+
+/* ---------------- Forms ---------------- */
+.card-form{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:20px;display:flex;flex-direction:column;gap:16px;
+}
+.card-form label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--ink-soft)}
+.card-form input[type=text],
+.card-form input[type=number],
+.card-form input[type=email],
+.card-form input[type=date],
+.card-form input[type=password],
+.card-form input[type=file]{
+  border:1px solid var(--line);border-radius:10px;padding:12px 13px;
+  font-family:var(--body);font-size:15px;color:var(--ink);background:#FBFDFD;
+}
+.mono-input{font-family:var(--mono) !important;font-size:20px !important;font-weight:600}
+.card-form input:focus{outline:2px solid var(--teal);outline-offset:1px}
+
+.segmented{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg-btn{
+  flex:1;padding:11px;background:#FBFDFD;border:none;cursor:pointer;
+  font-family:var(--body);font-size:13px;font-weight:600;color:var(--ink-soft);
+  border-right:1px solid var(--line);
+}
+.seg-btn:last-child{border-right:none}
+.seg-btn.active{background:var(--teal);color:#fff}
+
+.btn-primary{
+  background:var(--teal);color:#fff;border:none;border-radius:10px;
+  padding:14px;font-family:var(--body);font-weight:600;font-size:15px;cursor:pointer;
+}
+.btn-primary:active{background:var(--teal-dark)}
+.btn-secondary{
+  background:#EAF4F1;color:var(--teal-dark);border:1px dashed var(--teal);border-radius:10px;
+  padding:11px;font-weight:600;font-size:13px;cursor:pointer;
+}
+
+.result-badge{margin-top:14px;font-family:var(--mono);font-size:14px;font-weight:600;min-height:20px}
+.result-badge.ok{color:var(--green)}
+.result-badge.bad{color:var(--rust)}
+
+.photo-preview{width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-top:-4px}
+
+/* ---------------- Subtabs ---------------- */
+.subtabs{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
+.subtab-btn{
+  white-space:nowrap;background:var(--surface);border:1px solid var(--line);border-radius:999px;
+  padding:8px 16px;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer;
+}
+.subtab-btn.active{background:var(--teal);border-color:var(--teal);color:#fff}
+.subpanel{display:none}
+.subpanel.active{display:block}
+
+.ligne-produit{
+  display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;
+}
+.ligne-produit input{
+  border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:var(--body);
+}
+
+/* ---------------- Historique table ---------------- */
+.table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{
+  text-align:left;padding:10px 12px;background:#F1F5F5;color:var(--ink-soft);
+  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.03em;
+  border-bottom:1px solid var(--line);position:sticky;top:0;
+}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--line);color:var(--ink)}
+tbody tr:last-child td{border-bottom:none}
+.cell-bad{color:var(--rust);font-weight:700}
+.cell-ok{color:var(--green);font-weight:600}
+.table-empty{padding:24px;text-align:center;color:var(--ink-soft);font-size:13px}
+
+/* ---------------- Toast ---------------- */
+.toast{
+  position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(10px);
+  background:var(--ink);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;
+  z-index:50;opacity:0;transition:opacity .2s ease, transform .2s ease;
+  max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.bad{background:var(--rust)}
+
+/* ---------------- Desktop ---------------- */
+@media (min-width:820px){
+  .tabbar{
+    position:sticky;top:65px;bottom:auto;flex-direction:row;justify-content:center;gap:6px;
+    padding:10px;border-top:none;border-bottom:1px solid var(--line);
+  }
+  .tab-btn{flex:none;flex-direction:row;padding:9px 16px;font-size:13px}
+  .content{padding-bottom:60px}
+  .quick-grid{grid-template-columns:repeat(4,1fr)}
+}
