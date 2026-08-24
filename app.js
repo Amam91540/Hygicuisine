@@ -644,10 +644,51 @@ function afficherJourParIndexVue(vue, idx) {
       card.className = "plat-card";
       card.textContent = it.plat;
       card.addEventListener("click", () => ouvrirPlatModal(semaine, jour, it.plat, cat));
-      liste.appendChild(card);
+
+      if (vue === "tracabilite") {
+        // Sur la page Traçabilité, un bouton photo à côté du plat permet de
+        // prendre un cliché directement, sans passer par la fiche complète.
+        const ligne = document.createElement("div");
+        ligne.className = "plat-card-row";
+        card.classList.add("plat-card-flex");
+        ligne.appendChild(card);
+        const btnPhoto = document.createElement("button");
+        btnPhoto.type = "button";
+        btnPhoto.className = "plat-photo-btn";
+        btnPhoto.setAttribute("aria-label", `Photo pour ${it.plat}`);
+        btnPhoto.textContent = "📷";
+        btnPhoto.addEventListener("click", () => {
+          tracaPhotoContext = { semaine, jour, plat: it.plat };
+          document.getElementById("traca-photo-rapide").click();
+        });
+        ligne.appendChild(btnPhoto);
+        liste.appendChild(ligne);
+      } else {
+        liste.appendChild(card);
+      }
     });
   });
 }
+
+// -- Prise de photo rapide depuis la liste de la page Traçabilité --
+let tracaPhotoContext = null;
+document.getElementById("traca-photo-rapide").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file || !tracaPhotoContext) return;
+  try {
+    const base64 = await fileToBase64(file);
+    await apiCall("addPhotoPlat", {
+      semaine: tracaPhotoContext.semaine, jour: tracaPhotoContext.jour, plat: tracaPhotoContext.plat,
+      photoBase64: base64, personne: PRENOM
+    });
+    toast(`Photo ajoutée — ${tracaPhotoContext.plat}`);
+  } catch (err) {
+    toast("Erreur photo : " + err.message, true);
+  } finally {
+    e.target.value = "";
+    tracaPhotoContext = null;
+  }
+});
 
 function jourPrecedentVue(vue) {
   if (joursDisponibles.length === 0) return;
@@ -1195,7 +1236,7 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
   resultEl.className = "result-badge";
   try {
     const data = await apiCall("genererPdfENR", {
-      semaine, jour, date: dateJour ? Utilities_formatDateFr(dateJour) : ""
+      semaine, jour, date: dateJour ? Utilities_formatDateFr(dateJour) : "", personne: PRENOM
     });
     resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
@@ -1238,7 +1279,9 @@ async function chargerHistorique(onglet) {
         const isConformeCol = data.entetes[i] === "Conforme";
         const cls = isConformeCol && String(cell).includes("NON") ? "cell-bad"
                   : isConformeCol ? "cell-ok" : "";
-        html += `<td class="${cls}">${cell}</td>`;
+        const estLien = typeof cell === "string" && cell.startsWith("http");
+        const contenu = estLien ? `<a href="${cell}" target="_blank" rel="noopener">Ouvrir</a>` : cell;
+        html += `<td class="${cls}">${contenu}</td>`;
       });
       html += "</tr>";
     });
