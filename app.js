@@ -79,6 +79,8 @@ function gotoSection(name) {
   document.querySelector(`.tab-btn[data-section="${name}"]`).classList.add("active");
   if (name === "historique") chargerHistorique(currentHistTab);
   if (name === "menu") chargerMenu();
+  if (name === "plats") assurerMenuCharge().then(() => { if (jourIndexParVue.plats === undefined) afficherJourAutoVue("plats"); });
+  if (name === "tracabilite") assurerMenuCharge().then(() => { if (jourIndexParVue.tracabilite === undefined) afficherJourAutoVue("tracabilite"); });
 }
 
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -95,10 +97,6 @@ document.querySelectorAll(".segmented").forEach(seg => {
     seg.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
     e.target.classList.add("active");
   });
-});
-document.querySelector('#form-plat .segmented').addEventListener("click", (e) => {
-  if (!e.target.classList.contains("seg-btn")) return;
-  document.getElementById("plat-type").value = e.target.dataset.val;
 });
 document.querySelector('#enceinte-type-seg').addEventListener("click", (e) => {
   if (!e.target.classList.contains("seg-btn")) return;
@@ -120,38 +118,6 @@ document.getElementById("enceinte-nom").addEventListener("change", (e) => {
   document.querySelectorAll('#enceinte-type-seg .seg-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.val === typeDefaut));
   document.getElementById("enceinte-type").value = typeDefaut;
-});
-
-// ================= FORM : PLAT =================
-document.getElementById("form-plat").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const resultEl = document.getElementById("plat-result");
-  resultEl.textContent = "Envoi…";
-  resultEl.className = "result-badge";
-  try {
-    const data = await apiCall("addTempPlat", {
-      plat: document.getElementById("plat-nom").value,
-      type: document.getElementById("plat-type").value,
-      temperature: document.getElementById("plat-temp").value,
-      remarque: document.getElementById("plat-remarque").value,
-      personne: PRENOM
-    });
-    if (data.conforme) {
-      resultEl.textContent = "✓ Relevé conforme, enregistré.";
-      resultEl.classList.add("ok");
-    } else {
-      resultEl.textContent = "⚠ Hors norme — relevé enregistré quand même.";
-      resultEl.classList.add("bad");
-    }
-    e.target.reset();
-    document.querySelectorAll('#form-plat .seg-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelector('#form-plat .seg-btn[data-val="chaud"]').classList.add('active');
-    document.getElementById("plat-type").value = "chaud";
-    toast("Température plat enregistrée");
-  } catch (err) {
-    resultEl.textContent = "Erreur : " + err.message;
-    resultEl.classList.add("bad");
-  }
 });
 
 // ================= FORM : ENCEINTE =================
@@ -411,6 +377,7 @@ document.getElementById("btn-importer-menu").addEventListener("click", async () 
 let menuParSemaine = {};
 let ordreSemainesGlobal = [];
 let semaineAffichee = null;
+let menuDataChargeeUneFois = false;
 const ORDRE_JOURS = ["Lundi", "Mardi", "Jeudi", "Vendredi"];
 const ORDRE_CATEGORIES = ["Entrées", "Plat et accompagnement", "Laitages/Desserts", "Pain"];
 
@@ -419,49 +386,58 @@ async function chargerMenu() {
   const tabs = document.getElementById("menu-semaine-tabs");
   try {
     const data = await apiCall("getMenu", {});
-    if (!data.lignes || data.lignes.length === 0) {
-      tabs.innerHTML = "";
-      wrap.innerHTML = '<p class="table-empty">Aucun menu importé pour le moment.</p>';
-      construireJoursDisponibles();
-      afficherJourAuto();
-      return;
-    }
     menuParSemaine = {};
     ordreSemainesGlobal = [];
-    data.lignes.forEach(([semaine, jour, categorie, plat]) => {
-      if (!menuParSemaine[semaine]) { menuParSemaine[semaine] = []; ordreSemainesGlobal.push(semaine); }
-      menuParSemaine[semaine].push({ jour, categorie, plat });
-    });
-
-    tabs.innerHTML = "";
-    ordreSemainesGlobal.forEach((semaine, i) => {
-      const btn = document.createElement("button");
-      btn.className = "subtab-btn" + (i === 0 ? " active" : "");
-      btn.textContent = semaine.replace(/^Semaine\s*/i, "S. ");
-      btn.title = semaine;
-      btn.addEventListener("click", () => {
-        document.querySelectorAll("#menu-semaine-tabs .subtab-btn").forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        afficherSemaine(semaine);
+    if (data.lignes && data.lignes.length > 0) {
+      data.lignes.forEach(([semaine, jour, categorie, plat]) => {
+        if (!menuParSemaine[semaine]) { menuParSemaine[semaine] = []; ordreSemainesGlobal.push(semaine); }
+        menuParSemaine[semaine].push({ jour, categorie, plat });
       });
-      tabs.appendChild(btn);
-    });
-    afficherSemaine(ordreSemainesGlobal[0]);
+
+      tabs.innerHTML = "";
+      ordreSemainesGlobal.forEach((semaine, i) => {
+        const btn = document.createElement("button");
+        btn.className = "subtab-btn" + (i === 0 ? " active" : "");
+        btn.textContent = semaine.replace(/^Semaine\s*/i, "S. ");
+        btn.title = semaine;
+        btn.addEventListener("click", () => {
+          document.querySelectorAll("#menu-semaine-tabs .subtab-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          afficherSemaine(semaine);
+        });
+        tabs.appendChild(btn);
+      });
+      afficherSemaine(ordreSemainesGlobal[0]);
+    } else {
+      tabs.innerHTML = "";
+      wrap.innerHTML = '<p class="table-empty">Aucun menu importé pour le moment.</p>';
+    }
 
     construireJoursDisponibles();
-    afficherJourAuto();
+    afficherJourAutoVue("menu");
+    if (jourIndexParVue.plats === undefined) afficherJourAutoVue("plats");
+    if (jourIndexParVue.tracabilite === undefined) afficherJourAutoVue("tracabilite");
+    menuDataChargeeUneFois = true;
   } catch (err) {
     wrap.innerHTML = `<p class="table-empty">Erreur de chargement : ${err.message}</p>`;
   }
+}
+
+async function assurerMenuCharge() {
+  if (!menuDataChargeeUneFois) await chargerMenu();
 }
 
 function afficherSemaine(semaine) {
   semaineAffichee = semaine;
   const wrap = document.getElementById("menu-affichage");
   const items = menuParSemaine[semaine] || [];
+  const debutSemaine = parserDateDebutSemaine(semaine);
 
   let html = `<table><thead><tr><th>Catégorie</th>`;
-  ORDRE_JOURS.forEach(j => { html += `<th>${j}</th>`; });
+  ORDRE_JOURS.forEach(j => {
+    const d = calculerDateJour(semaine, j, debutSemaine);
+    html += `<th>${j}${d ? " " + d.getDate() : ""}</th>`;
+  });
   html += `</tr></thead><tbody>`;
 
   ORDRE_CATEGORIES.forEach(cat => {
@@ -482,7 +458,7 @@ function afficherSemaine(semaine) {
   wrap.innerHTML = html;
 }
 
-// ---- Toggle Jour / Semaine ----
+// ---- Toggle Jour / Semaine (page Menu uniquement) ----
 document.querySelectorAll('#section-menu .subtabs button[data-menuview]').forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll('#section-menu .subtabs button[data-menuview]').forEach(b => b.classList.remove("active"));
@@ -492,14 +468,23 @@ document.querySelectorAll('#section-menu .subtabs button[data-menuview]').forEac
   });
 });
 
-// ---- Vue "Jour" avec navigation par flèches ----
+// ---- Vue "Jour" réutilisable (pages Menu, Plats, Traçabilité) ----
 let joursDisponibles = []; // [{semaine, jour}], un par jour réellement présent dans le menu importé
-let jourIndexActuel = 0;
 const OFFSETS_JOURS = { Lundi: 0, Mardi: 1, Jeudi: 3, Vendredi: 4 };
+const NOMS_JOURS_SEMAINE = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
 const MOIS_FR = {
   janvier: 0, février: 1, fevrier: 1, mars: 2, avril: 3, mai: 4, juin: 5,
   juillet: 6, août: 7, aout: 7, septembre: 8, octobre: 9, novembre: 10, décembre: 11, decembre: 11
 };
+
+// Une "vue" = un jeu de boutons/zones (prev/next/nom/semaine/liste) affichant le menu du jour.
+// La même liste de jours (joursDisponibles) est partagée ; chaque vue garde sa propre position.
+const VUES_JOUR = {
+  menu:        { prev: "jour-prev",        next: "jour-next",        nom: "jour-nom",        semaine: "jour-semaine",        liste: "jour-plats-liste" },
+  plats:       { prev: "plats-jour-prev",  next: "plats-jour-next",  nom: "plats-jour-nom",  semaine: "plats-jour-semaine",  liste: "plats-jour-liste" },
+  tracabilite: { prev: "traca-jour-prev",  next: "traca-jour-next",  nom: "traca-jour-nom",  semaine: "traca-jour-semaine",  liste: "traca-jour-liste" }
+};
+let jourIndexParVue = {}; // { menu: <index ou -1>, plats: ..., tracabilite: ... } — undefined = jamais initialisée
 
 function construireJoursDisponibles() {
   joursDisponibles = [];
@@ -512,8 +497,7 @@ function construireJoursDisponibles() {
 }
 
 // Tente d'extraire la date du lundi de la semaine à partir de son intitulé
-// (ex. "Semaine 37 Du 7 septembre au 11 septembre 2026"), pour proposer par
-// défaut le jour du menu le plus proche d'aujourd'hui.
+// (ex. "Semaine 37 Du 7 septembre au 11 septembre 2026").
 function parserDateDebutSemaine(semaineLabel) {
   const m = semaineLabel.match(/du\s+(\d{1,2})\s+([a-zàâéèêîôûç]+)\s+au\s+\d{1,2}\s+[a-zàâéèêîôûç]+\s*(\d{4})?/i);
   if (!m) return null;
@@ -523,42 +507,71 @@ function parserDateDebutSemaine(semaineLabel) {
   return new Date(annee, moisIdx, parseInt(m[1], 10));
 }
 
-function trouverIndexDuJour() {
+function calculerDateJour(semaine, jour, debutSemaineDejaCalcule) {
+  const debut = debutSemaineDejaCalcule !== undefined ? debutSemaineDejaCalcule : parserDateDebutSemaine(semaine);
+  if (!debut) return null;
+  const d = new Date(debut);
+  d.setDate(d.getDate() + (OFFSETS_JOURS[jour] || 0));
+  return d;
+}
+
+function trouverIndexDuJourLePlusProche() {
   if (joursDisponibles.length === 0) return 0;
   const aujourdhui = new Date();
   aujourdhui.setHours(0, 0, 0, 0);
   let meilleurIndex = 0;
   let meilleurEcart = Infinity;
   joursDisponibles.forEach((j, idx) => {
-    const debut = parserDateDebutSemaine(j.semaine);
-    if (!debut) return;
-    const dateJour = new Date(debut);
-    dateJour.setDate(dateJour.getDate() + (OFFSETS_JOURS[j.jour] || 0));
+    const dateJour = calculerDateJour(j.semaine, j.jour);
+    if (!dateJour) return;
     const ecart = Math.abs(dateJour - aujourdhui);
     if (ecart < meilleurEcart) { meilleurEcart = ecart; meilleurIndex = idx; }
   });
   return meilleurIndex;
 }
 
-function afficherJourAuto() {
-  if (joursDisponibles.length === 0) {
-    document.getElementById("jour-nom").textContent = "—";
-    document.getElementById("jour-semaine").textContent = "—";
-    document.getElementById("jour-plats-liste").innerHTML = '<p class="table-empty">Importe un menu pour commencer.</p>';
-    return;
+function trouverIndexExactAujourdhui() {
+  const aujourdhui = new Date();
+  aujourdhui.setHours(0, 0, 0, 0);
+  for (let idx = 0; idx < joursDisponibles.length; idx++) {
+    const dateJour = calculerDateJour(joursDisponibles[idx].semaine, joursDisponibles[idx].jour);
+    if (dateJour && dateJour.getTime() === aujourdhui.getTime()) return idx;
   }
-  afficherJourParIndex(trouverIndexDuJour());
+  return -1;
 }
 
-function afficherJourParIndex(idx) {
+function afficherJourAutoVue(vue) {
+  const ids = VUES_JOUR[vue];
+  if (joursDisponibles.length === 0) {
+    document.getElementById(ids.nom).textContent = "—";
+    document.getElementById(ids.semaine).textContent = "";
+    document.getElementById(ids.liste).innerHTML = '<p class="table-empty">Importe un menu pour commencer.</p>';
+    jourIndexParVue[vue] = -1;
+    return;
+  }
+  const idxExact = trouverIndexExactAujourdhui();
+  if (idxExact !== -1) {
+    afficherJourParIndexVue(vue, idxExact);
+  } else {
+    const aujourdhui = new Date();
+    document.getElementById(ids.nom).textContent = `${NOMS_JOURS_SEMAINE[aujourdhui.getDay()]} ${aujourdhui.getDate()}`;
+    document.getElementById(ids.semaine).textContent = "";
+    document.getElementById(ids.liste).innerHTML = '<p class="table-empty">Pas de menu sélectionné pour aujourd\'hui.</p>';
+    jourIndexParVue[vue] = -1;
+  }
+}
+
+function afficherJourParIndexVue(vue, idx) {
   if (idx < 0 || idx >= joursDisponibles.length) return;
-  jourIndexActuel = idx;
+  const ids = VUES_JOUR[vue];
+  jourIndexParVue[vue] = idx;
   const { semaine, jour } = joursDisponibles[idx];
-  document.getElementById("jour-nom").textContent = jour;
-  document.getElementById("jour-semaine").textContent = semaine;
+  const dateJour = calculerDateJour(semaine, jour);
+  document.getElementById(ids.nom).textContent = dateJour ? `${jour} ${dateJour.getDate()}` : jour;
+  document.getElementById(ids.semaine).textContent = semaine;
 
   const items = (menuParSemaine[semaine] || []).filter(it => it.jour === jour);
-  const liste = document.getElementById("jour-plats-liste");
+  const liste = document.getElementById(ids.liste);
   liste.innerHTML = "";
   ORDRE_CATEGORIES.forEach(cat => {
     const itemsCat = items.filter(it => it.categorie === cat);
@@ -578,12 +591,29 @@ function afficherJourParIndex(idx) {
   });
 }
 
-document.getElementById("jour-prev").addEventListener("click", () => {
-  if (jourIndexActuel > 0) afficherJourParIndex(jourIndexActuel - 1);
-});
-document.getElementById("jour-next").addEventListener("click", () => {
-  if (jourIndexActuel < joursDisponibles.length - 1) afficherJourParIndex(jourIndexActuel + 1);
-});
+function jourPrecedentVue(vue) {
+  if (joursDisponibles.length === 0) return;
+  if (jourIndexParVue[vue] === -1 || jourIndexParVue[vue] === undefined) {
+    afficherJourParIndexVue(vue, trouverIndexDuJourLePlusProche());
+    return;
+  }
+  if (jourIndexParVue[vue] > 0) afficherJourParIndexVue(vue, jourIndexParVue[vue] - 1);
+}
+function jourSuivantVue(vue) {
+  if (joursDisponibles.length === 0) return;
+  if (jourIndexParVue[vue] === -1 || jourIndexParVue[vue] === undefined) {
+    afficherJourParIndexVue(vue, trouverIndexDuJourLePlusProche());
+    return;
+  }
+  if (jourIndexParVue[vue] < joursDisponibles.length - 1) afficherJourParIndexVue(vue, jourIndexParVue[vue] + 1);
+}
+
+document.getElementById("jour-prev").addEventListener("click", () => jourPrecedentVue("menu"));
+document.getElementById("jour-next").addEventListener("click", () => jourSuivantVue("menu"));
+document.getElementById("plats-jour-prev").addEventListener("click", () => jourPrecedentVue("plats"));
+document.getElementById("plats-jour-next").addEventListener("click", () => jourSuivantVue("plats"));
+document.getElementById("traca-jour-prev").addEventListener("click", () => jourPrecedentVue("tracabilite"));
+document.getElementById("traca-jour-next").addEventListener("click", () => jourSuivantVue("tracabilite"));
 
 // ---- Fiche détaillée d'un plat (températures par étape + photos) ----
 const ETAPES_PAR_TYPE = {
@@ -605,7 +635,32 @@ async function ouvrirPlatModal(semaine, jour, plat, categorie) {
   document.getElementById("plat-modal").classList.remove("hidden");
   await rafraichirEtapesModal();
   await rafraichirPhotosModal();
+  await rafraichirUCPModal();
 }
+
+async function rafraichirUCPModal() {
+  const case_ = document.getElementById("plat-modal-ucp");
+  case_.checked = false;
+  try {
+    const data = await apiCall("getPreparationUCP", {
+      semaine: modalContext.semaine, jour: modalContext.jour, plat: modalContext.plat
+    });
+    case_.checked = !!data.ucp;
+  } catch (e) { /* reste décoché si la lecture échoue */ }
+}
+
+document.getElementById("plat-modal-ucp").addEventListener("change", async (e) => {
+  try {
+    await apiCall("setPreparationUCP", {
+      semaine: modalContext.semaine, jour: modalContext.jour, plat: modalContext.plat,
+      ucp: e.target.checked, personne: PRENOM
+    });
+    toast(e.target.checked ? "Marqué « préparé par l'UCP »" : "Marqué « non préparé par l'UCP »");
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+    e.target.checked = !e.target.checked; // annule visuellement si l'enregistrement a échoué
+  }
+});
 
 document.getElementById("plat-modal-close").addEventListener("click", () => {
   document.getElementById("plat-modal").classList.add("hidden");
