@@ -79,9 +79,9 @@ function gotoSection(name) {
   document.querySelector(`.tab-btn[data-section="${name}"]`).classList.add("active");
   if (name === "historique") chargerHistorique(currentHistTab);
   if (name === "menu") chargerMenu();
-  if (name === "tracabilite") assurerMenuCharge().then(() => { if (jourIndexParVue.tracabilite === undefined) afficherJourAutoVue("tracabilite"); });
+  if (name === "tracabilite") assurerMenuCharge().then(() => { if (jourIndexParVue.tracabilite === undefined || jourIndexParVue.tracabilite === -1) afficherJourAutoVue("tracabilite"); });
   if (name === "enr") {
-    const p = assurerMenuCharge().then(() => { if (enrIndexActuel === undefined) return afficherENRAuto(); });
+    const p = assurerMenuCharge().then(() => { if (enrIndexActuel === undefined || enrIndexActuel === -1) return afficherENRAuto(); });
     if (nomSectionAScrollerApres) {
       const cible = nomSectionAScrollerApres;
       nomSectionAScrollerApres = null;
@@ -391,8 +391,8 @@ async function chargerMenu() {
 
     construireJoursDisponibles();
     afficherJourAutoVue("menu");
-    if (jourIndexParVue.tracabilite === undefined) afficherJourAutoVue("tracabilite");
-    if (enrIndexActuel === undefined) afficherENRAuto();
+    if (jourIndexParVue.tracabilite === undefined || jourIndexParVue.tracabilite === -1) afficherJourAutoVue("tracabilite");
+    if (enrIndexActuel === undefined || enrIndexActuel === -1) afficherENRAuto();
     menuDataChargeeUneFois = true;
   } catch (err) {
     wrap.innerHTML = `<p class="table-empty">Erreur de chargement : ${err.message}</p>`;
