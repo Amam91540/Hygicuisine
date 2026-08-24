@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -39,6 +40,7 @@
     <button class="tab-btn" data-section="enceintes"><span class="tab-ico">▣</span><span>Enceintes</span></button>
     <button class="tab-btn" data-section="tracabilite"><span class="tab-ico">◈</span><span>Traçabilité</span></button>
     <button class="tab-btn" data-section="stocks"><span class="tab-ico">▤</span><span>Stocks</span></button>
+    <button class="tab-btn" data-section="menu"><span class="tab-ico">▦</span><span>Menu</span></button>
     <button class="tab-btn" data-section="historique"><span class="tab-ico">≡</span><span>Historique</span></button>
   </nav>
 
@@ -63,6 +65,10 @@
         <button class="quick-card" data-goto="stocks">
           <span class="quick-ico">▤</span>
           <span class="quick-label">Bon de livraison / Stocks</span>
+        </button>
+        <button class="quick-card" data-goto="menu">
+          <span class="quick-ico">▦</span>
+          <span class="quick-label">Voir le menu de la semaine</span>
         </button>
       </div>
       <p class="dashboard-note">Les photos de traçabilité sont conservées automatiquement pendant 1 an, puis supprimées.</p>
@@ -184,6 +190,29 @@
       </div>
 
       <div id="stocks-result" class="result-badge"></div>
+    </section>
+
+    <!-- ================= MENU ================= -->
+    <section id="section-menu" class="panel">
+      <h2 class="panel-title">Menu des semaines</h2>
+
+      <div class="card-form">
+        <label>Importer un fichier de menu (.xlsx)
+          <input type="file" id="menu-fichier" accept=".xlsx">
+        </label>
+        <p class="dashboard-note" style="margin-top:-6px">
+          Le fichier doit suivre le format habituel : un bloc par semaine ("Semaine XX Du ... au ..."),
+          avec les colonnes Lundi / Mardi / Jeudi / Vendredi et les rubriques Entrées, Plat et accompagnement,
+          Laitages/Desserts, Pain. Chaque nouvel import remplace le menu précédent.
+        </p>
+        <button type="button" id="btn-importer-menu" class="btn-primary">Importer ce menu</button>
+      </div>
+      <div id="menu-import-result" class="result-badge"></div>
+
+      <div class="subtabs" id="menu-semaine-tabs" style="margin-top:20px"></div>
+      <div id="menu-affichage" class="table-wrap">
+        <p class="table-empty">Importe un fichier, ou consulte le menu déjà enregistré.</p>
+      </div>
     </section>
 
     <!-- ================= HISTORIQUE ================= -->
