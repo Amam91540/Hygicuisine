@@ -79,16 +79,29 @@ function gotoSection(name) {
   document.querySelector(`.tab-btn[data-section="${name}"]`).classList.add("active");
   if (name === "historique") chargerHistorique(currentHistTab);
   if (name === "menu") chargerMenu();
-  if (name === "plats") assurerMenuCharge().then(() => { if (jourIndexParVue.plats === undefined) afficherJourAutoVue("plats"); });
   if (name === "tracabilite") assurerMenuCharge().then(() => { if (jourIndexParVue.tracabilite === undefined) afficherJourAutoVue("tracabilite"); });
-  if (name === "enr") assurerMenuCharge().then(() => { if (enrIndexActuel === undefined) afficherENRAuto(); });
+  if (name === "enr") {
+    const p = assurerMenuCharge().then(() => { if (enrIndexActuel === undefined) return afficherENRAuto(); });
+    if (nomSectionAScrollerApres) {
+      const cible = nomSectionAScrollerApres;
+      nomSectionAScrollerApres = null;
+      p.then(() => setTimeout(() => {
+        const el = document.getElementById(cible);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60));
+    }
+  }
 }
+let nomSectionAScrollerApres = null;
 
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => gotoSection(btn.dataset.section));
 });
 document.querySelectorAll(".quick-card").forEach(btn => {
-  btn.addEventListener("click", () => gotoSection(btn.dataset.goto));
+  btn.addEventListener("click", () => {
+    nomSectionAScrollerApres = btn.dataset.scroll || null;
+    gotoSection(btn.dataset.goto);
+  });
 });
 
 // ================= SEGMENTED CONTROLS =================
@@ -98,100 +111,6 @@ document.querySelectorAll(".segmented").forEach(seg => {
     seg.querySelectorAll(".seg-btn").forEach(b => b.classList.remove("active"));
     e.target.classList.add("active");
   });
-});
-document.querySelector('#enceinte-type-seg').addEventListener("click", (e) => {
-  if (!e.target.classList.contains("seg-btn")) return;
-  document.querySelectorAll('#enceinte-type-seg .seg-btn').forEach(b => b.classList.remove('active'));
-  e.target.classList.add("active");
-  document.getElementById("enceinte-type").value = e.target.dataset.val;
-});
-document.querySelector('#enceinte-moment-seg').addEventListener("click", (e) => {
-  if (!e.target.classList.contains("seg-btn")) return;
-  document.querySelectorAll('#enceinte-moment-seg .seg-btn').forEach(b => b.classList.remove('active'));
-  e.target.classList.add("active");
-  document.getElementById("enceinte-moment").value = e.target.dataset.val;
-});
-
-// Présélectionne le type (positif/négatif) selon l'enceinte choisie — modifiable ensuite.
-const TYPE_PAR_DEFAUT_ENCEINTE = { "Congélateur": "negatif" }; // toutes les autres sont "positif" par défaut
-document.getElementById("enceinte-nom").addEventListener("change", (e) => {
-  const typeDefaut = TYPE_PAR_DEFAUT_ENCEINTE[e.target.value] || "positif";
-  document.querySelectorAll('#enceinte-type-seg .seg-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.val === typeDefaut));
-  document.getElementById("enceinte-type").value = typeDefaut;
-});
-
-// ================= FORM : ENCEINTE =================
-document.getElementById("form-enceinte").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const resultEl = document.getElementById("enceinte-result");
-  resultEl.textContent = "Envoi…";
-  resultEl.className = "result-badge";
-  try {
-    const data = await apiCall("addTempEnceinte", {
-      enceinte: document.getElementById("enceinte-nom").value,
-      typeEnceinte: document.getElementById("enceinte-type").value,
-      moment: document.getElementById("enceinte-moment").value,
-      temperature: document.getElementById("enceinte-temp").value,
-      remarque: document.getElementById("enceinte-remarque").value,
-      personne: PRENOM
-    });
-    if (data.conforme) {
-      resultEl.textContent = "✓ Relevé conforme, enregistré.";
-      resultEl.classList.add("ok");
-    } else {
-      resultEl.textContent = "⚠ Hors norme — relevé enregistré quand même.";
-      resultEl.classList.add("bad");
-    }
-    e.target.reset();
-    document.querySelectorAll('#enceinte-type-seg .seg-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelector('#enceinte-type-seg .seg-btn[data-val="positif"]').classList.add('active');
-    document.getElementById("enceinte-type").value = "positif";
-    document.querySelectorAll('#enceinte-moment-seg .seg-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelector('#enceinte-moment-seg .seg-btn[data-val="matin"]').classList.add('active');
-    document.getElementById("enceinte-moment").value = "matin";
-    toast("Température enceinte enregistrée");
-  } catch (err) {
-    resultEl.textContent = "Erreur : " + err.message;
-    resultEl.classList.add("bad");
-  }
-});
-
-// ================= FORM : PHOTO TRAÇABILITÉ =================
-document.getElementById("photo-fichier").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  const preview = document.getElementById("photo-preview");
-  if (!file) { preview.classList.add("hidden"); return; }
-  preview.src = await fileToBase64(file);
-  preview.classList.remove("hidden");
-});
-
-document.getElementById("form-photo").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const resultEl = document.getElementById("photo-result");
-  const file = document.getElementById("photo-fichier").files[0];
-  if (!file) return;
-  resultEl.textContent = "Envoi de la photo…";
-  resultEl.className = "result-badge";
-  try {
-    const base64 = await fileToBase64(file);
-    await apiCall("addPhotoTracabilite", {
-      produit: document.getElementById("photo-produit").value,
-      fournisseur: document.getElementById("photo-fournisseur").value,
-      lot: document.getElementById("photo-lot").value,
-      dlc: document.getElementById("photo-dlc").value,
-      photoBase64: base64,
-      personne: PRENOM
-    });
-    resultEl.textContent = "✓ Traçabilité enregistrée (conservation 1 an).";
-    resultEl.classList.add("ok");
-    e.target.reset();
-    document.getElementById("photo-preview").classList.add("hidden");
-    toast("Photo de traçabilité enregistrée");
-  } catch (err) {
-    resultEl.textContent = "Erreur : " + err.message;
-    resultEl.classList.add("bad");
-  }
 });
 
 // ================= SOUS-ONGLETS STOCKS =================
@@ -472,7 +391,6 @@ async function chargerMenu() {
 
     construireJoursDisponibles();
     afficherJourAutoVue("menu");
-    if (jourIndexParVue.plats === undefined) afficherJourAutoVue("plats");
     if (jourIndexParVue.tracabilite === undefined) afficherJourAutoVue("tracabilite");
     if (enrIndexActuel === undefined) afficherENRAuto();
     menuDataChargeeUneFois = true;
@@ -539,10 +457,9 @@ const MOIS_FR = {
 // La même liste de jours (joursDisponibles) est partagée ; chaque vue garde sa propre position.
 const VUES_JOUR = {
   menu:        { prev: "jour-prev",        next: "jour-next",        nom: "jour-nom",        semaine: "jour-semaine",        liste: "jour-plats-liste" },
-  plats:       { prev: "plats-jour-prev",  next: "plats-jour-next",  nom: "plats-jour-nom",  semaine: "plats-jour-semaine",  liste: "plats-jour-liste" },
   tracabilite: { prev: "traca-jour-prev",  next: "traca-jour-next",  nom: "traca-jour-nom",  semaine: "traca-jour-semaine",  liste: "traca-jour-liste" }
 };
-let jourIndexParVue = {}; // { menu: <index ou -1>, plats: ..., tracabilite: ... } — undefined = jamais initialisée
+let jourIndexParVue = {}; // { menu: <index ou -1>, tracabilite: ... } — undefined = jamais initialisée
 
 function construireJoursDisponibles() {
   joursDisponibles = [];
@@ -709,8 +626,6 @@ function jourSuivantVue(vue) {
 
 document.getElementById("jour-prev").addEventListener("click", () => jourPrecedentVue("menu"));
 document.getElementById("jour-next").addEventListener("click", () => jourSuivantVue("menu"));
-document.getElementById("plats-jour-prev").addEventListener("click", () => jourPrecedentVue("plats"));
-document.getElementById("plats-jour-next").addEventListener("click", () => jourSuivantVue("plats"));
 document.getElementById("traca-jour-prev").addEventListener("click", () => jourPrecedentVue("tracabilite"));
 document.getElementById("traca-jour-next").addEventListener("click", () => jourSuivantVue("tracabilite"));
 
@@ -944,38 +859,20 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   const cont = document.getElementById("enr-contenu");
   cont.innerHTML = '<p class="table-empty">Chargement…</p>';
 
-  const dateStr = dateJour ? Utilities_formatDateFr(dateJour) : null;
-  const items = (menuParSemaine[semaine] || []).filter(it => it.jour === jour);
-
-  // -- Détermine le type (chaud/froid) de chaque plat : classement mémorisé sinon déduction --
-  const platsAvecType = await Promise.all(items.map(async it => {
-    let type = typeParDefaut(it.categorie);
-    try {
-      const data = await apiCall("getPlatType", { semaine, jour, plat: it.plat });
-      if (data.type) type = data.type;
-    } catch (e) { /* on garde la déduction */ }
-    return { ...it, type };
-  }));
-
-  let releveEnceintes = {};
+  const dateStr = dateJour ? Utilities_formatDateFr(dateJour) : "";
+  let data;
   try {
-    if (dateStr) releveEnceintes = (await apiCall("getTempEnceintesDuJour", { date: dateStr })).releves || {};
-  } catch (e) { /* section affichée vide si erreur */ }
-
-  let releveDistribution = [];
-  try {
-    releveDistribution = (await apiCall("getTempsDistributionJour", { semaine, jour })).releves || [];
-  } catch (e) { /* liste vide si erreur */ }
-
-  let constat = { constatation: "", analyse: "", actions: "" };
-  try {
-    constat = await apiCall("getConstatationJour", { semaine, jour });
-  } catch (e) { /* champs vides si erreur */ }
+    data = await apiCall("getFeuilleENRComplete", { semaine, jour, date: dateStr });
+  } catch (e) {
+    cont.innerHTML = `<p class="table-empty">Erreur de chargement : ${e.message}</p>`;
+    return;
+  }
+  const { releveEnceintes, releveDistribution, constat, plats } = data;
 
   // -------- Construction du HTML --------
   let html = "";
 
-  html += `<div class="enr-titre-section">Enceintes réfrigérées</div>
+  html += `<div id="enr-section-enceintes"><div class="enr-titre-section">Enceintes réfrigérées</div>
     <div class="enr-enceintes-liste">`;
   ENCEINTES_ENR.forEach(e => {
     const r = releveEnceintes[e.app] || {};
@@ -993,9 +890,9 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
       </div>
     </div>`;
   });
-  html += `</div>`;
+  html += `</div>
 
-  html += `<div class="enr-titre-section">Enceintes de distribution</div>
+    <div class="enr-titre-section">Enceintes de distribution</div>
     <div class="enr-enceintes-liste">`;
   DISTRIBUTION_ENCEINTES.forEach(e => {
     const releve = dernierReleveDistribution(releveDistribution, e.nom);
@@ -1009,16 +906,12 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
       </div>
     </div>`;
   });
+  html += `</div></div>`;
+
+  html += `<div id="enr-section-plats">`;
+  html += construireTablePlatsENR("Suivi de préparation froide", plats.filter(p => p.type === "froid"), "froid");
+  html += construireTablePlatsENR("Remise en température et distribution", plats.filter(p => p.type === "chaud"), "chaud");
   html += `</div>`;
-
-  const platsFroids = platsAvecType.filter(p => p.type === "froid");
-  const platsChauds = platsAvecType.filter(p => p.type === "chaud");
-
-  html += `<div class="enr-titre-section">Suivi de préparation froide</div>
-    <div id="enr-plats-froids">${platsFroids.length ? "" : '<p class="table-empty">Aucun plat froid identifié pour ce jour.</p>'}</div>`;
-
-  html += `<div class="enr-titre-section">Remise en température et distribution</div>
-    <div id="enr-plats-chauds">${platsChauds.length ? "" : '<p class="table-empty">Aucun plat chaud identifié pour ce jour.</p>'}</div>`;
 
   html += `<div class="enr-titre-section">Constatation / Analyse / Action(s)</div>
     <div class="enr-constat-grid">
@@ -1036,12 +929,6 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
 
   cont.innerHTML = html;
 
-  // -- Injecte les blocs plats (générés en JS pour attacher facilement les listeners) --
-  const contFroids = document.getElementById("enr-plats-froids");
-  platsFroids.forEach(p => contFroids.appendChild(creerBlocPlatENR(semaine, jour, p)));
-  const contChauds = document.getElementById("enr-plats-chauds");
-  platsChauds.forEach(p => contChauds.appendChild(creerBlocPlatENR(semaine, jour, p)));
-
   // -- Listeners enceintes réfrigérées --
   cont.querySelectorAll(".enr-mini-input[data-enceinte]").forEach(input => {
     input.addEventListener("change", () => enregistrerTempEnceinteENR(input, semaine, jour));
@@ -1052,8 +939,71 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     input.addEventListener("change", () => enregistrerTempDistributionENR(input, semaine, jour));
   });
 
+  // -- Listeners températures des plats (tableau) --
+  cont.querySelectorAll(".enr-plat-temp-input").forEach(input => {
+    input.addEventListener("change", () => enregistrerTempPlatTableENR(input, semaine, jour));
+  });
+
+  // -- Listeners bascule Chaud/Froid par plat --
+  cont.querySelectorAll(".enr-plat-type-toggle").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      try {
+        await apiCall("setPlatType", { semaine, jour, plat: btn.dataset.plat, type: btn.dataset.nouveauType, personne: PRENOM });
+        construireFeuilleENR(semaine, jour, dateJour); // ré-affiche avec le plat dans la bonne colonne
+      } catch (err) { toast("Erreur : " + err.message, true); }
+    });
+  });
+
   // -- Listener constatations --
   document.getElementById("enr-constat-btn").addEventListener("click", () => enregistrerConstatationENR(semaine, jour));
+}
+
+// Construit un tableau plats × étapes dans le même esprit que le classeur Excel d'origine :
+// Nom du produit | Réception | [étape 2] | [étape 3] | Distribution.
+function construireTablePlatsENR(titre, plats, type) {
+  const etapes = ETAPES_PAR_TYPE[type]; // [Réception, ..., ..., Distribution]
+  let html = `<div class="enr-titre-section">${titre}</div>`;
+  if (plats.length === 0) {
+    return html + '<p class="table-empty">Aucun plat identifié pour ce jour.</p>';
+  }
+  html += `<div class="table-wrap enr-plats-table-wrap"><table class="enr-plats-table"><thead><tr><th>Produit</th>`;
+  etapes.forEach(e => html += `<th>${e}</th>`);
+  html += `</tr></thead><tbody>`;
+  plats.forEach(p => {
+    html += `<tr>
+      <td class="enr-plats-table-nom">
+        ${p.plat}
+        <button type="button" class="enr-plat-type-toggle" data-plat="${p.plat}" data-nouveau-type="${type === "chaud" ? "froid" : "chaud"}">
+          → ${type === "chaud" ? "Froid" : "Chaud"}
+        </button>
+      </td>`;
+    etapes.forEach(e => {
+      html += `<td>${celluleEtapePlatENR(p.plat, type, e, p.etapes[e])}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table></div>`;
+  return html;
+}
+
+function celluleEtapePlatENR(plat, type, etape, info) {
+  const valeur = info ? info.temperature : "";
+  const statut = info ? (String(info.conforme).includes("NON")
+    ? `<div class="enr-mini-statut cell-bad">⚠ ${info.heure}</div>`
+    : `<div class="enr-mini-statut cell-ok">✓ ${info.heure}</div>`) : "";
+  return `<input type="number" step="0.1" class="enr-mini-input enr-plat-temp-input"
+    data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${valeur}" placeholder="0.0">${statut}`;
+}
+
+async function enregistrerTempPlatTableENR(input, semaine, jour) {
+  if (!input.value) return;
+  const { plat, type, etape } = input.dataset;
+  try {
+    const res = await apiCall("addTempPlatEtape", { semaine, jour, plat, type, etape, temperature: input.value, personne: PRENOM });
+    toast(res.conforme ? `${plat} — ${etape} enregistrée` : `${plat} — ${etape} hors norme, enregistrée quand même`, !res.conforme);
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  }
 }
 
 // Convertit une Date JS en chaîne dd/MM/yyyy (même format que celui stocké côté Apps Script).
@@ -1115,85 +1065,7 @@ async function enregistrerTempDistributionENR(input, semaine, jour) {
   }
 }
 
-function creerBlocPlatENR(semaine, jour, plat) {
-  const bloc = document.createElement("div");
-  bloc.className = "enr-plat-bloc";
-  bloc.dataset.plat = plat.plat;
-  bloc.innerHTML = `
-    <div class="enr-plat-header">
-      <div class="enr-plat-nom">${plat.plat}</div>
-      <div class="enr-plat-toggle" data-plat="${plat.plat}">
-        <button type="button" data-val="chaud" class="${plat.type === "chaud" ? "active" : ""}">Chaud</button>
-        <button type="button" data-val="froid" class="${plat.type === "froid" ? "active" : ""}">Froid</button>
-      </div>
-    </div>
-    <div class="enr-etapes-liste" data-etapes></div>`;
-
-  const liste = bloc.querySelector("[data-etapes]");
-  ETAPES_PAR_TYPE[plat.type].forEach(etape => liste.appendChild(creerEtapeMiniENR(semaine, jour, plat.plat, plat.type, etape)));
-
-  bloc.querySelector(".enr-plat-toggle").addEventListener("click", async (e) => {
-    if (!e.target.dataset.val) return;
-    const nouveauType = e.target.dataset.val;
-    bloc.querySelectorAll(".enr-plat-toggle button").forEach(b => b.classList.remove("active"));
-    e.target.classList.add("active");
-    try {
-      await apiCall("setPlatType", { semaine, jour, plat: plat.plat, type: nouveauType, personne: PRENOM });
-    } catch (err) { toast("Erreur : " + err.message, true); }
-    plat.type = nouveauType;
-    liste.innerHTML = "";
-    ETAPES_PAR_TYPE[nouveauType].forEach(etape => liste.appendChild(creerEtapeMiniENR(semaine, jour, plat.plat, nouveauType, etape)));
-    // Redéplace le bloc dans la bonne colonne (froid/chaud)
-    const cibleId = nouveauType === "chaud" ? "enr-plats-chauds" : "enr-plats-froids";
-    document.getElementById(cibleId).appendChild(bloc);
-  });
-
-  return bloc;
-}
-
-// Permet à la fiche modale (clic sur un plat depuis Menu/Plats/Traçabilité) de rafraîchir
-// en direct le bloc correspondant sur la Feuille ENR si elle est déjà affichée.
-function rafraichirBlocPlatENR(semaine, jour, nomPlat) {
-  const bloc = document.querySelector(`.enr-plat-bloc[data-plat="${CSS.escape(nomPlat)}"]`);
-  if (bloc && enrIndexActuel !== undefined && enrIndexActuel !== -1) {
-    const j = joursDisponibles[enrIndexActuel];
-    if (j && j.semaine === semaine && j.jour === jour) afficherENRParIndex(enrIndexActuel);
-  }
-}
-
-// Réutilise le même habillage visuel que la fiche plat (.etape-row) pour rester cohérent
-// et rester lisible : nom de l'étape, dernier relevé connu, champ + bouton bien dimensionnés.
-function creerEtapeMiniENR(semaine, jour, plat, type, etape) {
-  const div = document.createElement("div");
-  div.className = "etape-row";
-  div.innerHTML = `
-    <div class="etape-nom">${etape}</div>
-    <div class="etape-champs">
-      <input type="number" step="0.1" class="etape-temp" placeholder="0.0">
-      <button type="button" class="btn-secondary etape-btn">Enregistrer</button>
-    </div>
-    <div class="etape-statut result-badge"></div>`;
-  const input = div.querySelector("input");
-  const btn = div.querySelector(".etape-btn");
-  const statut = div.querySelector(".etape-statut");
-  btn.addEventListener("click", async () => {
-    if (!input.value) {
-      statut.textContent = "Indique une température.";
-      statut.className = "etape-statut result-badge bad";
-      return;
-    }
-    try {
-      const res = await apiCall("addTempPlatEtape", { semaine, jour, plat, type, etape, temperature: input.value, personne: PRENOM });
-      statut.textContent = res.conforme ? "✓ Enregistré, conforme." : "⚠ Enregistré, hors norme.";
-      statut.className = "etape-statut result-badge " + (res.conforme ? "ok" : "bad");
-      input.value = "";
-    } catch (err) {
-      statut.textContent = "Erreur : " + err.message;
-      statut.className = "etape-statut result-badge bad";
-    }
-  });
-  return div;
-}
+function celluleEtapePlatENR_placeholder(){} // (ancien bloc supprimé — remplacé par le tableau ci-dessus)
 
 async function enregistrerConstatationENR(semaine, jour) {
   const btn = document.getElementById("enr-constat-btn");
