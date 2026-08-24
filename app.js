@@ -1,4 +1,3 @@
-
 // ================= ÉTAT =================
 let CODE_ACCES = "";
 let PRENOM = "";
@@ -318,6 +317,9 @@ document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
     resultEl.className = "result-badge bad";
     return;
   }
+  // Ouvre l'onglet tout de suite (au clic), sinon le navigateur bloque l'ouverture
+  // comme un pop-up une fois qu'on est passé par un await.
+  const nouvelOnglet = window.open("", "_blank");
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
@@ -327,10 +329,12 @@ document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
       remarqueGenerale: document.getElementById("liv-remarque").value,
       personne: PRENOM
     });
-    resultEl.textContent = "✓ PDF prêt, ouverture…";
+    resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
-    window.open(data.url, "_blank");
+    if (nouvelOnglet) nouvelOnglet.location.href = data.url;
+    else window.open(data.url, "_blank");
   } catch (err) {
+    if (nouvelOnglet) nouvelOnglet.close();
     resultEl.textContent = "Erreur : " + err.message;
     resultEl.classList.add("bad");
   }
@@ -344,14 +348,17 @@ document.getElementById("etat-pdf-btn").addEventListener("click", async () => {
     resultEl.className = "result-badge bad";
     return;
   }
+  const nouvelOnglet = window.open("", "_blank");
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
     const data = await apiCall("genererPdfEtatStocks", { lignes, personne: PRENOM });
-    resultEl.textContent = "✓ PDF prêt, ouverture…";
+    resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
-    window.open(data.url, "_blank");
+    if (nouvelOnglet) nouvelOnglet.location.href = data.url;
+    else window.open(data.url, "_blank");
   } catch (err) {
+    if (nouvelOnglet) nouvelOnglet.close();
     resultEl.textContent = "Erreur : " + err.message;
     resultEl.classList.add("bad");
   }
@@ -922,27 +929,41 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   let html = "";
 
   html += `<div class="enr-titre-section">Enceintes réfrigérées</div>
-    <table class="enr-enceintes-table"><thead><tr><th>Enceinte</th><th>Matin</th><th>Soir</th></tr></thead><tbody>`;
+    <div class="enr-enceintes-liste">`;
   ENCEINTES_ENR.forEach(e => {
     const r = releveEnceintes[e.app] || {};
-    html += `<tr>
-      <td>${e.label}</td>
-      <td>${celluleEnceinteENR(e.app, "matin", r.matin)}</td>
-      <td>${celluleEnceinteENR(e.app, "soir", r.soir)}</td>
-    </tr>`;
+    html += `<div class="enr-enceinte-card">
+      <div class="enr-enceinte-nom">${e.label}</div>
+      <div class="enr-enceinte-champs">
+        <div class="enr-enceinte-champ">
+          <label>Matin</label>
+          ${celluleEnceinteENR(e.app, "matin", r.matin)}
+        </div>
+        <div class="enr-enceinte-champ">
+          <label>Soir</label>
+          ${celluleEnceinteENR(e.app, "soir", r.soir)}
+        </div>
+      </div>
+    </div>`;
   });
-  html += `</tbody></table>`;
+  html += `</div>`;
 
   html += `<div class="enr-titre-section">Enceintes de distribution</div>
     <div id="enr-distribution-liste" class="enr-distribution-liste">${renderDistributionListe(releveDistribution)}</div>
     <div class="enr-distribution-form">
-      <input type="text" id="enr-dist-nom" placeholder="Nom (ex. Vitrine froide, Étuve 1)">
-      <select id="enr-dist-type">
-        <option value="froid">Froid</option>
-        <option value="chaud">Chaud</option>
-      </select>
-      <input type="number" step="0.1" id="enr-dist-temp" placeholder="°C">
-      <button type="button" id="enr-dist-btn" class="btn-secondary">Ajouter</button>
+      <label>Nom
+        <input type="text" id="enr-dist-nom" placeholder="Ex. Vitrine froide, Étuve 1">
+      </label>
+      <label>Type
+        <select id="enr-dist-type">
+          <option value="froid">Froid</option>
+          <option value="chaud">Chaud</option>
+        </select>
+      </label>
+      <label>Température (°C)
+        <input type="number" step="0.1" id="enr-dist-temp" placeholder="0.0">
+      </label>
+      <button type="button" id="enr-dist-btn" class="btn-secondary">+ Ajouter cette enceinte</button>
     </div>`;
 
   const platsFroids = platsAvecType.filter(p => p.type === "froid");
@@ -1060,10 +1081,10 @@ function creerBlocPlatENR(semaine, jour, plat) {
         <button type="button" data-val="froid" class="${plat.type === "froid" ? "active" : ""}">Froid</button>
       </div>
     </div>
-    <div class="enr-etapes-grid" data-etapes></div>`;
+    <div class="enr-etapes-liste" data-etapes></div>`;
 
-  const grid = bloc.querySelector("[data-etapes]");
-  ETAPES_PAR_TYPE[plat.type].forEach(etape => grid.appendChild(creerEtapeMiniENR(semaine, jour, plat.plat, plat.type, etape)));
+  const liste = bloc.querySelector("[data-etapes]");
+  ETAPES_PAR_TYPE[plat.type].forEach(etape => liste.appendChild(creerEtapeMiniENR(semaine, jour, plat.plat, plat.type, etape)));
 
   bloc.querySelector(".enr-plat-toggle").addEventListener("click", async (e) => {
     if (!e.target.dataset.val) return;
@@ -1074,8 +1095,8 @@ function creerBlocPlatENR(semaine, jour, plat) {
       await apiCall("setPlatType", { semaine, jour, plat: plat.plat, type: nouveauType, personne: PRENOM });
     } catch (err) { toast("Erreur : " + err.message, true); }
     plat.type = nouveauType;
-    grid.innerHTML = "";
-    ETAPES_PAR_TYPE[nouveauType].forEach(etape => grid.appendChild(creerEtapeMiniENR(semaine, jour, plat.plat, nouveauType, etape)));
+    liste.innerHTML = "";
+    ETAPES_PAR_TYPE[nouveauType].forEach(etape => liste.appendChild(creerEtapeMiniENR(semaine, jour, plat.plat, nouveauType, etape)));
     // Redéplace le bloc dans la bonne colonne (froid/chaud)
     const cibleId = nouveauType === "chaud" ? "enr-plats-chauds" : "enr-plats-froids";
     document.getElementById(cibleId).appendChild(bloc);
@@ -1094,27 +1115,35 @@ function rafraichirBlocPlatENR(semaine, jour, nomPlat) {
   }
 }
 
+// Réutilise le même habillage visuel que la fiche plat (.etape-row) pour rester cohérent
+// et rester lisible : nom de l'étape, dernier relevé connu, champ + bouton bien dimensionnés.
 function creerEtapeMiniENR(semaine, jour, plat, type, etape) {
   const div = document.createElement("div");
-  div.className = "enr-etape-mini";
+  div.className = "etape-row";
   div.innerHTML = `
-    <div class="enr-etape-mini-nom">${etape}</div>
-    <input type="number" step="0.1" placeholder="°C">
-    <button type="button" class="btn-secondary">OK</button>
-    <div class="enr-etape-mini-statut result-badge"></div>`;
+    <div class="etape-nom">${etape}</div>
+    <div class="etape-champs">
+      <input type="number" step="0.1" class="etape-temp" placeholder="0.0">
+      <button type="button" class="btn-secondary etape-btn">Enregistrer</button>
+    </div>
+    <div class="etape-statut result-badge"></div>`;
   const input = div.querySelector("input");
-  const btn = div.querySelector("button");
-  const statut = div.querySelector(".enr-etape-mini-statut");
+  const btn = div.querySelector(".etape-btn");
+  const statut = div.querySelector(".etape-statut");
   btn.addEventListener("click", async () => {
-    if (!input.value) { statut.textContent = "Température ?"; statut.className = "enr-etape-mini-statut result-badge bad"; return; }
+    if (!input.value) {
+      statut.textContent = "Indique une température.";
+      statut.className = "etape-statut result-badge bad";
+      return;
+    }
     try {
       const res = await apiCall("addTempPlatEtape", { semaine, jour, plat, type, etape, temperature: input.value, personne: PRENOM });
-      statut.textContent = res.conforme ? "✓" : "⚠";
-      statut.className = "enr-etape-mini-statut result-badge " + (res.conforme ? "ok" : "bad");
+      statut.textContent = res.conforme ? "✓ Enregistré, conforme." : "⚠ Enregistré, hors norme.";
+      statut.className = "etape-statut result-badge " + (res.conforme ? "ok" : "bad");
       input.value = "";
     } catch (err) {
-      statut.textContent = "Erreur";
-      statut.className = "enr-etape-mini-statut result-badge bad";
+      statut.textContent = "Erreur : " + err.message;
+      statut.className = "etape-statut result-badge bad";
     }
   });
   return div;
@@ -1148,16 +1177,19 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
   }
   const { semaine, jour } = joursDisponibles[enrIndexActuel];
   const dateJour = calculerDateJour(semaine, jour);
+  const nouvelOnglet = window.open("", "_blank");
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
     const data = await apiCall("genererPdfENR", {
       semaine, jour, date: dateJour ? Utilities_formatDateFr(dateJour) : ""
     });
-    resultEl.textContent = "✓ PDF prêt, ouverture…";
+    resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
-    window.open(data.url, "_blank");
+    if (nouvelOnglet) nouvelOnglet.location.href = data.url;
+    else window.open(data.url, "_blank");
   } catch (err) {
+    if (nouvelOnglet) nouvelOnglet.close();
     resultEl.textContent = "Erreur : " + err.message;
     resultEl.classList.add("bad");
   }
