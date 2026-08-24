@@ -78,6 +78,7 @@ function gotoSection(name) {
   document.getElementById("section-" + name).classList.add("active");
   document.querySelector(`.tab-btn[data-section="${name}"]`).classList.add("active");
   if (name === "historique") chargerHistorique(currentHistTab);
+  if (name === "menu") chargerMenu();
 }
 
 document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -318,6 +319,141 @@ document.getElementById("form-etat").addEventListener("submit", async (e) => {
     resultEl.classList.add("bad");
   }
 });
+
+// ================= MENU =================
+const JOURS_COLONNES = { 1: "Lundi", 3: "Mardi", 5: "Jeudi", 7: "Vendredi" }; // index 0-based dans la feuille
+
+function parserFichierMenu(worksheet) {
+  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+  const resultats = [];
+  let semaineActuelle = null;
+  let categorieActuelle = null;
+
+  rows.forEach(row => {
+    const colA = (row[0] || "").toString().trim();
+    const colB = (row[1] || "").toString().trim();
+
+    if (colB.startsWith("Semaine")) {
+      semaineActuelle = colB;
+      categorieActuelle = null;
+      return;
+    }
+    if (colB.includes("Total DP")) return;
+    if (colA.toLowerCase().startsWith("merci de renseigner")) return;
+    if (!semaineActuelle) return;
+
+    if (colA) categorieActuelle = colA;
+    if (!categorieActuelle) return;
+
+    Object.entries(JOURS_COLONNES).forEach(([idx, jour]) => {
+      const val = (row[idx] || "").toString().trim();
+      if (val) {
+        resultats.push({ semaine: semaineActuelle, jour, categorie: categorieActuelle, plat: val });
+      }
+    });
+  });
+  return resultats;
+}
+
+document.getElementById("btn-importer-menu").addEventListener("click", async () => {
+  const resultEl = document.getElementById("menu-import-result");
+  const file = document.getElementById("menu-fichier").files[0];
+  if (!file) {
+    resultEl.textContent = "Choisis d'abord un fichier .xlsx.";
+    resultEl.className = "result-badge bad";
+    return;
+  }
+  resultEl.textContent = "Lecture du fichier…";
+  resultEl.className = "result-badge";
+  try {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const feuille = workbook.Sheets["Feuille de commande"] || workbook.Sheets[workbook.SheetNames[0]];
+    const lignes = parserFichierMenu(feuille);
+    if (lignes.length === 0) {
+      resultEl.textContent = "Aucune donnée reconnue dans ce fichier — vérifie le format.";
+      resultEl.classList.add("bad");
+      return;
+    }
+    resultEl.textContent = "Envoi du menu…";
+    await apiCall("importMenu", { lignes });
+    resultEl.textContent = `✓ Menu importé (${lignes.length} plats).`;
+    resultEl.classList.add("ok");
+    toast("Menu importé");
+    chargerMenu();
+  } catch (err) {
+    resultEl.textContent = "Erreur : " + err.message;
+    resultEl.classList.add("bad");
+  }
+});
+
+let menuParSemaine = {};
+let semaineAffichee = null;
+const ORDRE_JOURS = ["Lundi", "Mardi", "Jeudi", "Vendredi"];
+const ORDRE_CATEGORIES = ["Entrées", "Plat et accompagnement", "Laitages/Desserts", "Pain"];
+
+async function chargerMenu() {
+  const wrap = document.getElementById("menu-affichage");
+  const tabs = document.getElementById("menu-semaine-tabs");
+  try {
+    const data = await apiCall("getMenu", {});
+    if (!data.lignes || data.lignes.length === 0) {
+      tabs.innerHTML = "";
+      wrap.innerHTML = '<p class="table-empty">Aucun menu importé pour le moment.</p>';
+      return;
+    }
+    menuParSemaine = {};
+    const ordreSemaines = [];
+    data.lignes.forEach(([semaine, jour, categorie, plat]) => {
+      if (!menuParSemaine[semaine]) { menuParSemaine[semaine] = []; ordreSemaines.push(semaine); }
+      menuParSemaine[semaine].push({ jour, categorie, plat });
+    });
+
+    tabs.innerHTML = "";
+    ordreSemaines.forEach((semaine, i) => {
+      const btn = document.createElement("button");
+      btn.className = "subtab-btn" + (i === 0 ? " active" : "");
+      btn.textContent = semaine.replace(/^Semaine\s*/i, "S. ");
+      btn.title = semaine;
+      btn.addEventListener("click", () => {
+        document.querySelectorAll("#menu-semaine-tabs .subtab-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        afficherSemaine(semaine);
+      });
+      tabs.appendChild(btn);
+    });
+    afficherSemaine(ordreSemaines[0]);
+  } catch (err) {
+    wrap.innerHTML = `<p class="table-empty">Erreur de chargement : ${err.message}</p>`;
+  }
+}
+
+function afficherSemaine(semaine) {
+  semaineAffichee = semaine;
+  const wrap = document.getElementById("menu-affichage");
+  const items = menuParSemaine[semaine] || [];
+
+  let html = `<table><thead><tr><th>Catégorie</th>`;
+  ORDRE_JOURS.forEach(j => { html += `<th>${j}</th>`; });
+  html += `</tr></thead><tbody>`;
+
+  ORDRE_CATEGORIES.forEach(cat => {
+    const itemsCat = items.filter(it => it.categorie === cat);
+    if (itemsCat.length === 0) return;
+    const maxLignes = Math.max(...ORDRE_JOURS.map(j => itemsCat.filter(it => it.jour === j).length), 1);
+    for (let ligne = 0; ligne < maxLignes; ligne++) {
+      html += "<tr>";
+      html += ligne === 0 ? `<td><b>${cat}</b></td>` : `<td></td>`;
+      ORDRE_JOURS.forEach(j => {
+        const platsJour = itemsCat.filter(it => it.jour === j);
+        html += `<td>${platsJour[ligne] ? platsJour[ligne].plat : ""}</td>`;
+      });
+      html += "</tr>";
+    }
+  });
+  html += "</tbody></table>";
+  wrap.innerHTML = html;
+}
 
 // ================= HISTORIQUE =================
 let currentHistTab = "temp_plats";
