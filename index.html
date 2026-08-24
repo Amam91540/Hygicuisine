@@ -72,27 +72,18 @@
 
     <!-- ================= PLATS ================= -->
     <section id="section-plats" class="panel">
-      <h2 class="panel-title">Température — Plats</h2>
-      <form id="form-plat" class="card-form">
-        <label>Nom du plat
-          <input type="text" id="plat-nom" required placeholder="Ex. Poulet basquaise">
-        </label>
-        <label>Type de contrôle
-          <div class="segmented">
-            <button type="button" class="seg-btn active" data-val="chaud">Chaud (≥ 63°C)</button>
-            <button type="button" class="seg-btn" data-val="froid">Froid (≤ 10°C)</button>
-          </div>
-        </label>
-        <input type="hidden" id="plat-type" value="chaud">
-        <label>Température relevée (°C)
-          <input type="number" step="0.1" id="plat-temp" required class="mono-input" placeholder="0.0">
-        </label>
-        <label>Remarque (facultatif)
-          <input type="text" id="plat-remarque" placeholder="Ex. servi immédiatement">
-        </label>
-        <button type="submit" class="btn-primary">Enregistrer le relevé</button>
-      </form>
-      <div id="plat-result" class="result-badge"></div>
+      <h2 class="panel-title">Plats — Menu du jour</h2>
+      <div class="jour-nav">
+        <button id="plats-jour-prev" class="jour-arrow" aria-label="Jour précédent">◀</button>
+        <div class="jour-label">
+          <div id="plats-jour-nom" class="jour-nom">—</div>
+          <div id="plats-jour-semaine" class="jour-semaine-label">—</div>
+        </div>
+        <button id="plats-jour-next" class="jour-arrow" aria-label="Jour suivant">▶</button>
+      </div>
+      <div id="plats-jour-liste" class="plats-liste">
+        <p class="table-empty">Importe un menu pour commencer.</p>
+      </div>
     </section>
 
     <!-- ================= ENCEINTES ================= -->
@@ -141,7 +132,20 @@
 
     <!-- ================= TRAÇABILITÉ ================= -->
     <section id="section-tracabilite" class="panel">
-      <h2 class="panel-title">Traçabilité — Photo produit</h2>
+      <h2 class="panel-title">Traçabilité — Menu du jour</h2>
+      <div class="jour-nav">
+        <button id="traca-jour-prev" class="jour-arrow" aria-label="Jour précédent">◀</button>
+        <div class="jour-label">
+          <div id="traca-jour-nom" class="jour-nom">—</div>
+          <div id="traca-jour-semaine" class="jour-semaine-label">—</div>
+        </div>
+        <button id="traca-jour-next" class="jour-arrow" aria-label="Jour suivant">▶</button>
+      </div>
+      <div id="traca-jour-liste" class="plats-liste">
+        <p class="table-empty">Importe un menu pour commencer.</p>
+      </div>
+
+      <h2 class="panel-title" style="margin-top:32px">Traçabilité livraison (fournisseur)</h2>
       <form id="form-photo" class="card-form">
         <label>Produit
           <input type="text" id="photo-produit" required placeholder="Ex. Filet de saumon">
@@ -211,20 +215,7 @@
     <section id="section-menu" class="panel">
       <h2 class="panel-title">Menu</h2>
 
-      <div class="card-form">
-        <label>Importer un fichier de menu (.xlsx)
-          <input type="file" id="menu-fichier" accept=".xlsx">
-        </label>
-        <p class="dashboard-note" style="margin-top:-6px">
-          Le fichier doit suivre le format habituel : un bloc par semaine ("Semaine XX Du ... au ..."),
-          avec les colonnes Lundi / Mardi / Jeudi / Vendredi et les rubriques Entrées, Plat et accompagnement,
-          Laitages/Desserts, Pain. Chaque nouvel import remplace le menu précédent.
-        </p>
-        <button type="button" id="btn-importer-menu" class="btn-primary">Importer ce menu</button>
-      </div>
-      <div id="menu-import-result" class="result-badge"></div>
-
-      <div class="subtabs" style="margin-top:20px">
+      <div class="subtabs">
         <button class="subtab-btn active" data-menuview="jour">Jour</button>
         <button class="subtab-btn" data-menuview="semaine">Semaine (tableau)</button>
       </div>
@@ -249,6 +240,20 @@
           <p class="table-empty">Importe un fichier, ou consulte le menu déjà enregistré.</p>
         </div>
       </div>
+
+      <h2 class="panel-title" style="margin-top:32px">Importer un nouveau menu</h2>
+      <div class="card-form">
+        <label>Fichier de menu (.xlsx)
+          <input type="file" id="menu-fichier" accept=".xlsx">
+        </label>
+        <p class="dashboard-note" style="margin-top:-6px">
+          Le fichier doit suivre le format habituel : un bloc par semaine ("Semaine XX Du ... au ..."),
+          avec les colonnes Lundi / Mardi / Jeudi / Vendredi et les rubriques Entrées, Plat et accompagnement,
+          Laitages/Desserts, Pain. Chaque nouvel import remplace le menu précédent.
+        </p>
+        <button type="button" id="btn-importer-menu" class="btn-primary">Importer ce menu</button>
+      </div>
+      <div id="menu-import-result" class="result-badge"></div>
     </section>
 
     <!-- ================= HISTORIQUE ================= -->
@@ -288,6 +293,10 @@
     <div id="plat-modal-etapes" class="etapes-liste"></div>
 
     <h4 class="modal-souscat">Photos de traçabilité</h4>
+    <label class="ucp-toggle">
+      <input type="checkbox" id="plat-modal-ucp">
+      <span>Préparé par l'UCP <em>(les photos restent possibles pour tes ajouts, ex. gruyère ajouté sur place)</em></span>
+    </label>
     <label class="btn-secondary" style="display:block;text-align:center;cursor:pointer">
       + Ajouter une photo (paquet, ingrédients…)
       <input type="file" id="plat-modal-photo" accept="image/*" capture="environment" class="hidden">
