@@ -204,6 +204,67 @@ tbody tr:last-child td{border-bottom:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .toast.bad{background:var(--rust)}
 
+/* ---------------- Menu du jour ---------------- */
+.jour-nav{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-bottom:18px;
+}
+.jour-arrow{
+  width:44px;height:44px;flex-shrink:0;border-radius:50%;border:1px solid var(--line);
+  background:var(--surface);font-size:16px;color:var(--teal);cursor:pointer;
+}
+.jour-arrow:active{background:#EAF4F1}
+.jour-label{text-align:center;flex:1}
+.jour-nom{font-family:var(--display);font-size:24px;font-weight:700}
+.jour-semaine-label{font-size:12px;color:var(--ink-soft);margin-top:2px}
+
+.plats-liste{display:flex;flex-direction:column;gap:8px}
+.plats-categorie-titre{
+  font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--ink-soft);margin:14px 0 2px;
+}
+.plats-categorie-titre:first-child{margin-top:0}
+.plat-card{
+  text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:14px 16px;font-size:14.5px;font-weight:600;color:var(--ink);cursor:pointer;
+}
+.plat-card:active{background:#EAF4F1;border-color:var(--teal)}
+
+/* ---------------- Modale fiche plat ---------------- */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(15,43,46,0.45);
+  display:flex;align-items:flex-end;justify-content:center;z-index:100;
+}
+.modal-card{
+  background:var(--surface);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;
+  border-radius:20px 20px 0 0;padding:24px 20px 32px;position:relative;
+}
+.modal-close{
+  position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;
+  border:1px solid var(--line);background:#F1F5F5;font-size:14px;color:var(--ink-soft);cursor:pointer;
+}
+.modal-titre{font-family:var(--display);font-size:20px;margin:0 30px 4px 0}
+.modal-souscat-info{font-size:12px;color:var(--ink-soft);margin:0 0 14px}
+.modal-souscat{font-size:13px;font-weight:600;color:var(--ink-soft);margin:20px 0 10px}
+
+.etapes-liste{display:flex;flex-direction:column;gap:10px}
+.etape-row{background:#F9FBFB;border:1px solid var(--line);border-radius:12px;padding:12px}
+.etape-nom{font-size:13px;font-weight:600;margin-bottom:8px}
+.etape-deja{font-family:var(--mono);font-weight:600;font-size:12px}
+.etape-champs{display:flex;gap:8px}
+.etape-champs .etape-temp{
+  flex:1;font-family:var(--mono);font-size:17px;font-weight:600;
+  border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:#fff;
+}
+.etape-champs .etape-btn{padding:9px 14px;font-size:12.5px;white-space:nowrap}
+.etape-statut{margin-top:6px;font-size:12.5px;min-height:0}
+
+.photos-galerie{display:flex;flex-wrap:wrap;gap:8px}
+.photo-vignette{
+  background:#EAF4F1;color:var(--teal-dark);border-radius:8px;padding:8px 12px;
+  font-size:12.5px;font-weight:600;text-decoration:none;
+}
+
 /* ---------------- Desktop ---------------- */
 @media (min-width:820px){
   .tabbar{
