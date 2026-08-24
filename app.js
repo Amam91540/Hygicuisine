@@ -1136,7 +1136,7 @@ async function enregistrerTempEnceinteENR(input, semaine, jour) {
   const typeEnceinte = enceinte === "Congélateur" ? "negatif" : "positif";
   try {
     const res = await apiCall("addTempEnceinte", {
-      enceinte, typeEnceinte, moment, temperature: input.value, personne: PRENOM
+      enceinte, typeEnceinte, moment, temperature: input.value, semaine, jour, personne: PRENOM
     });
     toast(res.conforme ? `${enceinte} (${moment}) enregistrée` : `${enceinte} (${moment}) — hors norme, enregistrée quand même`, !res.conforme);
   } catch (err) {
@@ -1221,7 +1221,7 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
 });
 
 // ================= HISTORIQUE =================
-let currentHistTab = "temp_plats";
+let currentHistTab = "feuille_enr";
 
 document.querySelectorAll('#hist-tabs .subtab-btn').forEach(btn => {
   btn.addEventListener("click", () => {
