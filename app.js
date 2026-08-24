@@ -867,7 +867,7 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     cont.innerHTML = `<p class="table-empty">Erreur de chargement : ${e.message}</p>`;
     return;
   }
-  const { releveEnceintes, releveDistribution, constat, plats } = data;
+  const { releveEnceintes, releveDistribution, constat, reception, plats } = data;
 
   // -------- Construction du HTML --------
   let html = "";
@@ -909,6 +909,7 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   html += `</div></div>`;
 
   html += `<div id="enr-section-plats">`;
+  html += construireBlocReceptionENR(reception || {});
   html += construireTablePlatsENR("Suivi de préparation froide", plats.filter(p => p.type === "froid"), "froid");
   html += construireTablePlatsENR("Remise en température et distribution", plats.filter(p => p.type === "chaud"), "chaud");
   html += `</div>`;
@@ -939,9 +940,10 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     input.addEventListener("change", () => enregistrerTempDistributionENR(input, semaine, jour));
   });
 
-  // -- Listeners températures des plats (tableau) --
-  cont.querySelectorAll(".enr-plat-temp-input").forEach(input => {
+  // -- Listeners températures des plats (tableau), sauvegarde immédiate --
+  cont.querySelectorAll(".enr-plat-temp-input, .enr-plat-heure-input").forEach(input => {
     input.addEventListener("change", () => enregistrerTempPlatTableENR(input, semaine, jour));
+    input.addEventListener("input", () => declencherSauvegardeDifferee(input, semaine, jour));
   });
 
   // -- Listeners bascule Chaud/Froid par plat --
@@ -954,12 +956,76 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     });
   });
 
+  // -- Listener réception marchandise --
+  document.getElementById("enr-reception-btn").addEventListener("click", () => enregistrerReceptionMarchandiseENR(semaine, jour));
+  document.getElementById("enr-reception-photo").addEventListener("change", () => {
+    document.getElementById("enr-reception-photo-nom").textContent =
+      document.getElementById("enr-reception-photo").files[0]?.name || "Aucune photo choisie";
+  });
+
   // -- Listener constatations --
   document.getElementById("enr-constat-btn").addEventListener("click", () => enregistrerConstatationENR(semaine, jour));
 }
 
+function construireBlocReceptionENR(reception) {
+  return `<div class="enr-titre-section">Réception de la marchandise</div>
+    <div class="card-form enr-reception-form">
+      <label>Date de réception
+        <input type="date" id="enr-reception-date" value="${convertirDateFrEnIso(reception.dateReception)}">
+      </label>
+      <label>Heure de réception
+        <input type="time" id="enr-reception-heure" value="${reception.heureReception || ""}">
+      </label>
+      <label>Photo de la fiche de réception
+        <input type="file" id="enr-reception-photo" accept="image/*" capture="environment" class="hidden">
+        <button type="button" id="enr-reception-photo-btn" class="btn-secondary"
+          onclick="document.getElementById('enr-reception-photo').click()">📷 Prendre une photo</button>
+        <span id="enr-reception-photo-nom" class="enr-reception-photo-nom">
+          ${reception.lienPhoto ? `<a href="${reception.lienPhoto}" target="_blank" rel="noopener">Photo déjà enregistrée — Ouvrir</a>` : "Aucune photo choisie"}
+        </span>
+      </label>
+      <button type="button" id="enr-reception-btn" class="btn-primary">Enregistrer la réception</button>
+    </div>`;
+}
+
+async function enregistrerReceptionMarchandiseENR(semaine, jour) {
+  const btn = document.getElementById("enr-reception-btn");
+  const dateIso = document.getElementById("enr-reception-date").value;
+  const heure = document.getElementById("enr-reception-heure").value;
+  const fichier = document.getElementById("enr-reception-photo").files[0];
+  btn.textContent = "Enregistrement…";
+  try {
+    let photoBase64 = null;
+    if (fichier) photoBase64 = await fileToBase64(fichier);
+    await apiCall("setReceptionMarchandise", {
+      semaine, jour,
+      dateReception: dateIso ? convertirDateIsoEnFr(dateIso) : "",
+      heureReception: heure,
+      photoBase64,
+      personne: PRENOM
+    });
+    toast("Réception de la marchandise enregistrée");
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  } finally {
+    btn.textContent = "Enregistrer la réception";
+  }
+}
+
+function convertirDateFrEnIso(dateFr) {
+  if (!dateFr) return "";
+  const [j, m, a] = dateFr.split("/");
+  if (!j || !m || !a) return "";
+  return `${a}-${m.padStart(2, "0")}-${j.padStart(2, "0")}`;
+}
+function convertirDateIsoEnFr(dateIso) {
+  const [a, m, j] = dateIso.split("-");
+  return `${j}/${m}/${a}`;
+}
+
 // Construit un tableau plats × étapes dans le même esprit que le classeur Excel d'origine :
 // Nom du produit | Réception | [étape 2] | [étape 3] | Distribution.
+// Les 3 dernières étapes (tout sauf Réception) ont aussi un champ Heure à saisir manuellement.
 function construireTablePlatsENR(titre, plats, type) {
   const etapes = ETAPES_PAR_TYPE[type]; // [Réception, ..., ..., Distribution]
   let html = `<div class="enr-titre-section">${titre}</div>`;
@@ -977,31 +1043,72 @@ function construireTablePlatsENR(titre, plats, type) {
           → ${type === "chaud" ? "Froid" : "Chaud"}
         </button>
       </td>`;
-    etapes.forEach(e => {
-      html += `<td>${celluleEtapePlatENR(p.plat, type, e, p.etapes[e])}</td>`;
-    });
+    if (estPainLR(p.plat)) {
+      etapes.forEach(() => html += `<td class="enr-plat-ta">T.A.</td>`);
+    } else {
+      etapes.forEach((e, i) => {
+        html += `<td>${celluleEtapePlatENR(p.plat, type, e, p.etapes[e], i > 0)}</td>`;
+      });
+    }
     html += `</tr>`;
   });
   html += `</tbody></table></div>`;
   return html;
 }
 
-function celluleEtapePlatENR(plat, type, etape, info) {
+// "Petits pains LR" : jamais mesurés, on affiche T.A. (température ambiante) partout.
+function estPainLR(plat) {
+  const n = (plat || "").toLowerCase();
+  return n.includes("pain") && n.includes("lr");
+}
+
+function celluleEtapePlatENR(plat, type, etape, info, avecHeure) {
   const valeur = info ? info.temperature : "";
+  const heureValeur = info ? info.heure : "";
   const statut = info ? (String(info.conforme).includes("NON")
-    ? `<div class="enr-mini-statut cell-bad">⚠ ${info.heure}</div>`
-    : `<div class="enr-mini-statut cell-ok">✓ ${info.heure}</div>`) : "";
-  return `<input type="number" step="0.1" class="enr-mini-input enr-plat-temp-input"
-    data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${valeur}" placeholder="0.0">${statut}`;
+    ? `<div class="enr-mini-statut cell-bad">⚠ enregistré</div>`
+    : `<div class="enr-mini-statut cell-ok">✓ enregistré</div>`) : "";
+  let html = `<input type="number" step="0.1" class="enr-mini-input enr-plat-temp-input"
+    data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${valeur}" placeholder="°C">`;
+  if (avecHeure) {
+    html += `<input type="time" class="enr-mini-input enr-plat-heure-input"
+      data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${heureValeur}">`;
+  }
+  html += statut;
+  return html;
+}
+
+let minuteriesSauvegarde = {};
+// Sauvegarde automatiquement ~800ms après la dernière frappe, même sans quitter le champ
+// (en plus de la sauvegarde au blur/"change") — pour que rien ne se perde en cas de
+// changement d'onglet ou de rechargement pendant la saisie.
+function declencherSauvegardeDifferee(input, semaine, jour) {
+  const cle = input.dataset.plat + "|" + input.dataset.etape + "|" + input.className;
+  clearTimeout(minuteriesSauvegarde[cle]);
+  minuteriesSauvegarde[cle] = setTimeout(() => enregistrerTempPlatTableENR(input, semaine, jour), 800);
 }
 
 async function enregistrerTempPlatTableENR(input, semaine, jour) {
-  if (!input.value) return;
   const { plat, type, etape } = input.dataset;
+  // Le champ heure et le champ température d'une même étape sont dans la même cellule.
+  const cellule = input.closest("td");
+  const inputTemp = cellule.querySelector(".enr-plat-temp-input");
+  const inputHeure = cellule.querySelector(".enr-plat-heure-input");
+  if (!inputTemp.value) return; // rien à enregistrer sans température
+  const statut = cellule.querySelector(".enr-mini-statut");
   try {
-    const res = await apiCall("addTempPlatEtape", { semaine, jour, plat, type, etape, temperature: input.value, personne: PRENOM });
-    toast(res.conforme ? `${plat} — ${etape} enregistrée` : `${plat} — ${etape} hors norme, enregistrée quand même`, !res.conforme);
+    const res = await apiCall("addTempPlatEtape", {
+      semaine, jour, plat, type, etape,
+      temperature: inputTemp.value,
+      heure: inputHeure ? inputHeure.value : "",
+      personne: PRENOM
+    });
+    if (statut) {
+      statut.textContent = res.conforme ? "✓ enregistré" : "⚠ enregistré";
+      statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
+    }
   } catch (err) {
+    if (statut) { statut.textContent = "⚠ non enregistré"; statut.className = "enr-mini-statut cell-bad"; }
     toast("Erreur : " + err.message, true);
   }
 }
