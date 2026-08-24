@@ -36,8 +36,6 @@
 
   <nav class="tabbar" id="tabbar">
     <button class="tab-btn active" data-section="dashboard"><span class="tab-ico">◎</span><span>Accueil</span></button>
-    <button class="tab-btn" data-section="plats"><span class="tab-ico">◆</span><span>Plats</span></button>
-    <button class="tab-btn" data-section="enceintes"><span class="tab-ico">▣</span><span>Enceintes</span></button>
     <button class="tab-btn" data-section="tracabilite"><span class="tab-ico">◈</span><span>Traçabilité</span></button>
     <button class="tab-btn" data-section="stocks"><span class="tab-ico">▤</span><span>Stocks</span></button>
     <button class="tab-btn" data-section="menu"><span class="tab-ico">▦</span><span>Menu</span></button>
@@ -51,88 +49,24 @@
     <section id="section-dashboard" class="panel active">
       <h2 class="panel-title">Aujourd'hui</h2>
       <div class="quick-grid">
-        <button class="quick-card" data-goto="menu">
-          <span class="quick-ico">▦</span>
-          <span class="quick-label">Menu du jour (températures &amp; photos par plat)</span>
+        <button class="quick-card" data-goto="enr" data-scroll="enr-section-plats">
+          <span class="quick-ico">▧</span>
+          <span class="quick-label">Plats — températures &amp; classement chaud/froid</span>
         </button>
-        <button class="quick-card" data-goto="enceintes">
+        <button class="quick-card" data-goto="enr" data-scroll="enr-section-enceintes">
           <span class="quick-ico">▣</span>
-          <span class="quick-label">Relever une enceinte froide</span>
+          <span class="quick-label">Enceintes réfrigérées &amp; distribution</span>
         </button>
         <button class="quick-card" data-goto="tracabilite">
           <span class="quick-ico">◈</span>
-          <span class="quick-label">Traçabilité livraison (fournisseur)</span>
+          <span class="quick-label">Traçabilité — photos par plat</span>
         </button>
         <button class="quick-card" data-goto="stocks">
           <span class="quick-ico">▤</span>
           <span class="quick-label">Bon de livraison / Stocks</span>
         </button>
-        <button class="quick-card" data-goto="enr">
-          <span class="quick-ico">▧</span>
-          <span class="quick-label">Feuille ENR (rapport du jour)</span>
-        </button>
       </div>
       <p class="dashboard-note">Les photos de traçabilité sont conservées automatiquement pendant 1 an, puis supprimées.</p>
-    </section>
-
-    <!-- ================= PLATS ================= -->
-    <section id="section-plats" class="panel">
-      <h2 class="panel-title">Plats — Menu du jour</h2>
-      <div class="jour-nav">
-        <button id="plats-jour-prev" class="jour-arrow" aria-label="Jour précédent">◀</button>
-        <div class="jour-label">
-          <div id="plats-jour-nom" class="jour-nom">—</div>
-          <div id="plats-jour-semaine" class="jour-semaine-label">—</div>
-        </div>
-        <button id="plats-jour-next" class="jour-arrow" aria-label="Jour suivant">▶</button>
-      </div>
-      <div id="plats-jour-liste" class="plats-liste">
-        <p class="table-empty">Importe un menu pour commencer.</p>
-      </div>
-    </section>
-
-    <!-- ================= ENCEINTES ================= -->
-    <section id="section-enceintes" class="panel">
-      <h2 class="panel-title">Température — Enceintes réfrigérées</h2>
-      <p class="dashboard-note" style="margin-top:-10px;margin-bottom:16px">
-        Relevés à faire le matin et le soir, les lundi / mardi / jeudi / vendredi
-        (pas de relevé pendant les vacances scolaires de la Zone C, l'établissement étant fermé).
-      </p>
-      <form id="form-enceinte" class="card-form">
-        <label>Enceinte
-          <select id="enceinte-nom" required>
-            <option value="" disabled selected>Choisir une enceinte…</option>
-            <option value="Réception">Réception</option>
-            <option value="Produits finis">Produits finis</option>
-            <option value="Produits laitiers">Produits laitiers</option>
-            <option value="Zone de préparation">Zone de préparation</option>
-            <option value="Frigo PAI">Frigo PAI</option>
-            <option value="Congélateur">Congélateur</option>
-          </select>
-        </label>
-        <label>Moment
-          <div class="segmented" id="enceinte-moment-seg">
-            <button type="button" class="seg-btn active" data-val="matin">Matin</button>
-            <button type="button" class="seg-btn" data-val="soir">Soir</button>
-          </div>
-        </label>
-        <input type="hidden" id="enceinte-moment" value="matin">
-        <label>Type
-          <div class="segmented" id="enceinte-type-seg">
-            <button type="button" class="seg-btn active" data-val="positif">Positif (0 à 4°C)</button>
-            <button type="button" class="seg-btn" data-val="negatif">Négatif (-18°C)</button>
-          </div>
-        </label>
-        <input type="hidden" id="enceinte-type" value="positif">
-        <label>Température relevée (°C)
-          <input type="number" step="0.1" id="enceinte-temp" required class="mono-input" placeholder="0.0">
-        </label>
-        <label>Remarque (facultatif)
-          <input type="text" id="enceinte-remarque" placeholder="Ex. porte restée ouverte">
-        </label>
-        <button type="submit" class="btn-primary">Enregistrer le relevé</button>
-      </form>
-      <div id="enceinte-result" class="result-badge"></div>
     </section>
 
     <!-- ================= TRAÇABILITÉ ================= -->
@@ -150,28 +84,6 @@
         <p class="table-empty">Importe un menu pour commencer.</p>
       </div>
       <input type="file" id="traca-photo-rapide" accept="image/*" capture="environment" class="hidden">
-
-      <h2 class="panel-title" style="margin-top:32px">Traçabilité livraison (fournisseur)</h2>
-      <form id="form-photo" class="card-form">
-        <label>Produit
-          <input type="text" id="photo-produit" required placeholder="Ex. Filet de saumon">
-        </label>
-        <label>Fournisseur
-          <input type="text" id="photo-fournisseur" placeholder="Ex. Metro">
-        </label>
-        <label>N° de lot
-          <input type="text" id="photo-lot" placeholder="Ex. L2026-08-1123">
-        </label>
-        <label>DLC / DLUO
-          <input type="date" id="photo-dlc">
-        </label>
-        <label>Photo de l'étiquette
-          <input type="file" id="photo-fichier" accept="image/*" capture="environment" required>
-        </label>
-        <img id="photo-preview" class="photo-preview hidden">
-        <button type="submit" class="btn-primary">Enregistrer la traçabilité</button>
-      </form>
-      <div id="photo-result" class="result-badge"></div>
     </section>
 
     <!-- ================= STOCKS / LIVRAISON ================= -->
