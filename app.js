@@ -100,9 +100,26 @@ document.querySelector('#form-plat .segmented').addEventListener("click", (e) =>
   if (!e.target.classList.contains("seg-btn")) return;
   document.getElementById("plat-type").value = e.target.dataset.val;
 });
-document.querySelector('#form-enceinte .segmented').addEventListener("click", (e) => {
+document.querySelector('#enceinte-type-seg').addEventListener("click", (e) => {
   if (!e.target.classList.contains("seg-btn")) return;
+  document.querySelectorAll('#enceinte-type-seg .seg-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add("active");
   document.getElementById("enceinte-type").value = e.target.dataset.val;
+});
+document.querySelector('#enceinte-moment-seg').addEventListener("click", (e) => {
+  if (!e.target.classList.contains("seg-btn")) return;
+  document.querySelectorAll('#enceinte-moment-seg .seg-btn').forEach(b => b.classList.remove('active'));
+  e.target.classList.add("active");
+  document.getElementById("enceinte-moment").value = e.target.dataset.val;
+});
+
+// Présélectionne le type (positif/négatif) selon l'enceinte choisie — modifiable ensuite.
+const TYPE_PAR_DEFAUT_ENCEINTE = { "Congélateur": "negatif" }; // toutes les autres sont "positif" par défaut
+document.getElementById("enceinte-nom").addEventListener("change", (e) => {
+  const typeDefaut = TYPE_PAR_DEFAUT_ENCEINTE[e.target.value] || "positif";
+  document.querySelectorAll('#enceinte-type-seg .seg-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.val === typeDefaut));
+  document.getElementById("enceinte-type").value = typeDefaut;
 });
 
 // ================= FORM : PLAT =================
@@ -147,6 +164,7 @@ document.getElementById("form-enceinte").addEventListener("submit", async (e) =>
     const data = await apiCall("addTempEnceinte", {
       enceinte: document.getElementById("enceinte-nom").value,
       typeEnceinte: document.getElementById("enceinte-type").value,
+      moment: document.getElementById("enceinte-moment").value,
       temperature: document.getElementById("enceinte-temp").value,
       remarque: document.getElementById("enceinte-remarque").value,
       personne: PRENOM
@@ -159,9 +177,12 @@ document.getElementById("form-enceinte").addEventListener("submit", async (e) =>
       resultEl.classList.add("bad");
     }
     e.target.reset();
-    document.querySelectorAll('#form-enceinte .seg-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelector('#form-enceinte .seg-btn[data-val="positif"]').classList.add('active');
+    document.querySelectorAll('#enceinte-type-seg .seg-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelector('#enceinte-type-seg .seg-btn[data-val="positif"]').classList.add('active');
     document.getElementById("enceinte-type").value = "positif";
+    document.querySelectorAll('#enceinte-moment-seg .seg-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelector('#enceinte-moment-seg .seg-btn[data-val="matin"]').classList.add('active');
+    document.getElementById("enceinte-moment").value = "matin";
     toast("Température enceinte enregistrée");
   } catch (err) {
     resultEl.textContent = "Erreur : " + err.message;
