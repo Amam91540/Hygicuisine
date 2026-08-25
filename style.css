@@ -194,8 +194,8 @@ body{
 .ligne-liaison{
   background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
 }
-.ligne-liaison-nom{margin-bottom:8px}
-.ligne-liaison-nom input{
+.ligne-liaison-nom{margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
+.ligne-liaison-nom input, .ligne-liaison-nom select{
   width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;font-weight:600;font-family:var(--body);
 }
 .ligne-liaison-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px}
