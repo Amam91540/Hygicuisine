@@ -216,6 +216,14 @@ tbody tr:last-child td{border-bottom:none}
 }
 .hist-supprimer-btn:active{background:#FBEAEA}
 
+.hist-filtre-date-zone{
+  display:flex;align-items:flex-end;gap:10px;margin-bottom:14px;flex-wrap:wrap;
+}
+.hist-filtre-date-zone label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--ink-soft)}
+.hist-filtre-date-zone input{
+  border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:14px;font-family:var(--body);
+}
+
 /* Historique — Traçabilité (photos regroupées par jour) */
 .hist-jour-bloc{margin-bottom:18px}
 .hist-jour-titre{
