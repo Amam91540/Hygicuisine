@@ -184,29 +184,19 @@ body{
   border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:var(--body);
 }
 
-/* Fiche de liaison — identité et lignes produit enrichies */
-.liv-identite-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.liv-identite-grid label{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
-.liv-identite-grid input{
-  border:1px solid var(--line);border-radius:9px;padding:10px;font-size:14px;font-family:var(--body);
+/* Bon de livraison — liste simple façon fiche de commande (2 colonnes) */
+.liv-commande-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.liv-commande-table th{
+  background:#F1F5F5;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;
+  color:var(--ink-soft);padding:10px 12px;text-align:left;font-weight:600;
 }
-
-.ligne-liaison{
-  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
+.liv-commande-table th:last-child{text-align:center;width:130px}
+.liv-commande-table td{padding:8px 12px;border-top:1px solid var(--line);font-size:13.5px;vertical-align:middle}
+.liv-commande-table td:last-child{text-align:center}
+.ligne-liaison-qte, .ligne-liaison-nom-libre{
+  width:100%;border:1px solid var(--line);border-radius:7px;padding:8px;font-size:14px;font-family:var(--body);text-align:center;
 }
-.ligne-liaison-nom{margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
-.ligne-liaison-nom input, .ligne-liaison-nom select{
-  width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;font-weight:600;font-family:var(--body);
-}
-.ligne-liaison-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.ligne-liaison-champ{display:flex;flex-direction:column;gap:4px}
-.ligne-liaison-champ label{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em}
-.ligne-liaison-champ input, .ligne-liaison-champ select{
-  border:1px solid var(--line);border-radius:7px;padding:8px;font-size:13px;font-family:var(--body);width:100%;
-}
-.ligne-liaison-suppr{
-  margin-top:8px;background:none;border:none;color:var(--rust);font-size:12px;font-weight:600;cursor:pointer;padding:4px;
-}
+.ligne-liaison-nom-libre{text-align:left;font-weight:600}
 
 /* ---------------- Historique table ---------------- */
 .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
