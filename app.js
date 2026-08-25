@@ -156,6 +156,58 @@ function lireLignes(containerId) {
 }
 
 // ---- Liste des produits pour le Bon de livraison (façon fiche de commande) ----
+// ---- Signature tactile (Bon de livraison) ----
+function initialiserSignature(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "#1F2B2E";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  let dessine = false;
+  let dernierPoint = null;
+
+  function position(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) * (canvas.width / rect.width),
+      y: (e.clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+  canvas.addEventListener("pointerdown", (e) => {
+    dessine = true;
+    dernierPoint = position(e);
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!dessine) return;
+    const p = position(e);
+    ctx.beginPath();
+    ctx.moveTo(dernierPoint.x, dernierPoint.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    dernierPoint = p;
+    canvas.dataset.signe = "1";
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(evt =>
+    canvas.addEventListener(evt, () => { dessine = false; }));
+}
+["signature-preparateur", "signature-chauffeur", "signature-receptionneur"].forEach(initialiserSignature);
+
+document.querySelectorAll(".signature-effacer").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const canvas = document.getElementById(btn.dataset.cible);
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    canvas.dataset.signe = "";
+  });
+});
+
+// Renvoie l'image de la signature (PNG en base64) si elle a bien été tracée, sinon null.
+function recupererSignature(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  return canvas.dataset.signe === "1" ? canvas.toDataURL("image/png") : null;
+}
+
 const PRODUITS_HABITUELS_LIVRAISON = [
   "Huile d'olive 1L", "Huile de Colza 5L", "Huile de friture", "Vinaigre coloré",
   "Sauce salade", "Mayonnaise seau 5L", "Moutarde de dijon seau 5Kg",
@@ -238,6 +290,9 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
       remarqueGenerale: document.getElementById("liv-remarque").value,
       destinataire: document.getElementById("liv-email").value,
       photoBase64,
+      signaturePreparateur: recupererSignature("signature-preparateur"),
+      signatureChauffeur: recupererSignature("signature-chauffeur"),
+      signatureReceptionneur: recupererSignature("signature-receptionneur"),
       personne: PRENOM
     });
     resultEl.textContent = "✓ Bon de livraison envoyé par e-mail.";
@@ -301,6 +356,9 @@ document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
       fournisseur: "UCP Brétigny",
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
+      signaturePreparateur: recupererSignature("signature-preparateur"),
+      signatureChauffeur: recupererSignature("signature-chauffeur"),
+      signatureReceptionneur: recupererSignature("signature-receptionneur"),
       personne: PRENOM
     });
     resultEl.textContent = "✓ PDF prêt — ouvre-le puis utilise l'impression de ton navigateur pour l'imprimer.";
