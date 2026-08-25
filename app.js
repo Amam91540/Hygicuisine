@@ -898,6 +898,32 @@ const DISTRIBUTION_ENCEINTES = [
 ];
 
 let enrIndexActuel; // undefined = jamais initialisée, -1 = "aujourd'hui" virtuel, sinon index réel
+let dernieresDonneesENR = null; // dernier chargement complet de la Feuille ENR, réutilisé pour la vérification avant validation
+
+// Liste les éléments manquants avant de valider la journée : températures non saisies
+// (hors "petits pains LR", jamais mesurés) et photos absentes sur un plat non-UCP.
+function calculerElementsManquantsENR(donnees, statutPhotos) {
+  const manque = [];
+  ENCEINTES_ENR.forEach(e => {
+    const r = (donnees.releveEnceintes || {})[e.app] || {};
+    if (!r.matin) manque.push(`${e.label} — relevé du matin manquant`);
+    if (!r.soir) manque.push(`${e.label} — relevé du soir manquant`);
+  });
+  (donnees.plats || []).forEach(p => {
+    if (estPainLR(p.plat)) return;
+    ETAPES_PAR_TYPE[p.type].forEach(etape => {
+      if (!p.etapes[etape]) manque.push(`${p.plat} — "${etape}" non saisie`);
+    });
+    const aPhoto = (statutPhotos.platsAvecPhoto || []).includes(p.plat);
+    const ucp = statutPhotos.indexUCP && statutPhotos.indexUCP[p.plat];
+    if (!aPhoto && !ucp) manque.push(`${p.plat} — aucune photo`);
+  });
+  const reception = donnees.reception || {};
+  if (!reception.dateReception && !reception.heureReception) {
+    manque.push("Réception marchandise — date/heure non renseignées");
+  }
+  return manque;
+}
 
 function afficherENRAuto() {
   if (joursDisponibles.length === 0) {
@@ -950,6 +976,7 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     return;
   }
   const { releveEnceintes, releveDistribution, constat, reception, plats } = data;
+  dernieresDonneesENR = { semaine, jour, ...data };
 
   // -------- Construction du HTML --------
   let html = "";
@@ -1307,6 +1334,25 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
   const { semaine, jour } = joursDisponibles[enrIndexActuel];
   const dateJour = calculerDateJour(semaine, jour);
   const nouvelOnglet = window.open("", "_blank");
+
+  // Vérification avant validation : avertit si des éléments sont manquants, sans bloquer.
+  if (dernieresDonneesENR && dernieresDonneesENR.semaine === semaine && dernieresDonneesENR.jour === jour) {
+    let statutPhotos = { platsAvecPhoto: [], indexUCP: {} };
+    try { statutPhotos = await apiCall("getStatutPhotosJour", { semaine, jour }); } catch (e) { /* on continue sans bloquer */ }
+    const manquants = calculerElementsManquantsENR(dernieresDonneesENR, statutPhotos);
+    if (manquants.length > 0) {
+      const apercu = manquants.slice(0, 15).map(m => "• " + m).join("\n")
+        + (manquants.length > 15 ? `\n… et ${manquants.length - 15} autre(s)` : "");
+      const continuer = confirm(`Éléments manquants avant de valider la journée :\n\n${apercu}\n\nGénérer quand même le PDF ?`);
+      if (!continuer) {
+        if (nouvelOnglet) nouvelOnglet.close();
+        resultEl.textContent = "Validation annulée — complète les éléments manquants.";
+        resultEl.className = "result-badge bad";
+        return;
+      }
+    }
+  }
+
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
@@ -1327,13 +1373,23 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
 // ================= HISTORIQUE =================
 let currentHistTab = "feuille_enr";
 
+const ONGLETS_AVEC_FILTRE_DATE = ["feuille_enr", "tracabilite_photos"];
+
 document.querySelectorAll('#hist-tabs .subtab-btn').forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll('#hist-tabs .subtab-btn').forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     currentHistTab = btn.dataset.hist;
+    document.getElementById("hist-filtre-date-zone").classList.toggle("hidden", !ONGLETS_AVEC_FILTRE_DATE.includes(currentHistTab));
+    document.getElementById("hist-filtre-date").value = "";
     chargerHistorique(currentHistTab);
   });
+});
+
+document.getElementById("hist-filtre-date").addEventListener("change", () => chargerHistorique(currentHistTab));
+document.getElementById("hist-filtre-reset").addEventListener("click", () => {
+  document.getElementById("hist-filtre-date").value = "";
+  chargerHistorique(currentHistTab);
 });
 
 // Colonnes à masquer par onglet (les données restent stockées, juste pas affichées).
@@ -1353,7 +1409,23 @@ async function chargerHistorique(onglet) {
 
   try {
     const data = await apiCall("getHistorique", { onglet, limite: 50 });
-    if (!data.lignes || data.lignes.length === 0) {
+    let lignes = data.lignes || [];
+
+    if (onglet === "feuille_enr") {
+      const dateFiltre = document.getElementById("hist-filtre-date").value; // yyyy-mm-dd
+      if (dateFiltre) {
+        const [, m, j] = dateFiltre.split("-").length === 3 ? ["", dateFiltre.split("-")[1], dateFiltre.split("-")[2]] : [];
+        const jSansZero = String(parseInt(j, 10));
+        const idxRapport = data.entetes.indexOf("Rapport du jour");
+        lignes = lignes.filter(l => {
+          const texte = String(l[idxRapport] || "");
+          const match = texte.match(/(\d{1,2})\/(\d{2})\/(\d{4})/);
+          return match && match[1] === jSansZero && match[2] === m && match[3] === dateFiltre.split("-")[0];
+        });
+      }
+    }
+
+    if (lignes.length === 0) {
       wrap.innerHTML = '<p class="table-empty">Aucune donnée pour le moment.</p>';
       return;
     }
@@ -1369,7 +1441,7 @@ async function chargerHistorique(onglet) {
     indicesAffiches.forEach(i => { html += `<th>${data.entetes[i]}</th>`; });
     if (peutSupprimer) html += `<th></th>`;
     html += "</tr></thead><tbody>";
-    data.lignes.forEach((row, rowIdx) => {
+    lignes.forEach((row, rowIdx) => {
       html += "<tr>";
       indicesAffiches.forEach(i => {
         const cell = row[i];
@@ -1390,7 +1462,7 @@ async function chargerHistorique(onglet) {
 
     if (peutSupprimer) {
       wrap.querySelectorAll(".hist-supprimer-btn").forEach(btn => {
-        btn.addEventListener("click", () => supprimerLigneHistorique(onglet, data.lignes[parseInt(btn.dataset.row, 10)]));
+        btn.addEventListener("click", () => supprimerLigneHistorique(onglet, lignes[parseInt(btn.dataset.row, 10)]));
       });
     }
   } catch (err) {
@@ -1417,12 +1489,24 @@ async function supprimerLigneHistorique(onglet, ligne) {
 async function chargerHistoriqueTracabilite(wrap) {
   try {
     const data = await apiCall("getPhotosGroupeesParJour", {});
-    if (!data.jours || data.jours.length === 0) {
+    let jours = data.jours || [];
+
+    const dateFiltre = document.getElementById("hist-filtre-date").value; // yyyy-mm-dd
+    if (dateFiltre) {
+      jours = jours.filter(j => {
+        const dateJour = calculerDateJour(j.semaine, j.jour);
+        if (!dateJour) return false;
+        const iso = `${dateJour.getFullYear()}-${String(dateJour.getMonth() + 1).padStart(2, "0")}-${String(dateJour.getDate()).padStart(2, "0")}`;
+        return iso === dateFiltre;
+      });
+    }
+
+    if (jours.length === 0) {
       wrap.innerHTML = '<p class="table-empty">Aucune photo enregistrée pour le moment.</p>';
       return;
     }
     let html = "";
-    data.jours.forEach((j, i) => {
+    jours.forEach((j, i) => {
       const dateJour = calculerDateJour(j.semaine, j.jour);
       const titre = dateJour ? `${j.jour} ${dateJour.getDate()}` : j.jour;
       html += `<div class="hist-jour-bloc">
