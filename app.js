@@ -1422,12 +1422,15 @@ async function chargerHistoriqueTracabilite(wrap) {
       return;
     }
     let html = "";
-    data.jours.forEach(j => {
+    data.jours.forEach((j, i) => {
       const dateJour = calculerDateJour(j.semaine, j.jour);
       const titre = dateJour ? `${j.jour} ${dateJour.getDate()}` : j.jour;
       html += `<div class="hist-jour-bloc">
-        <div class="hist-jour-titre">${titre} <span class="hist-jour-semaine">— ${j.semaine}</span></div>
-        <div class="hist-jour-photos">`;
+        <button type="button" class="hist-jour-titre" data-jour-index="${i}">
+          <span>${titre} <span class="hist-jour-semaine">— ${j.semaine}</span></span>
+          <span class="hist-jour-compteur">${j.photos.length} photo${j.photos.length > 1 ? "s" : ""} ▾</span>
+        </button>
+        <div class="hist-jour-photos hidden" id="hist-jour-photos-${i}">`;
       j.photos.forEach(p => {
         html += `<div class="hist-photo-item">
           <div class="hist-photo-info">
@@ -1444,6 +1447,15 @@ async function chargerHistoriqueTracabilite(wrap) {
       html += `</div></div>`;
     });
     wrap.innerHTML = html;
+
+    wrap.querySelectorAll(".hist-jour-titre").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const contenu = document.getElementById(`hist-jour-photos-${btn.dataset.jourIndex}`);
+        const ouvert = !contenu.classList.contains("hidden");
+        contenu.classList.toggle("hidden", ouvert);
+        btn.classList.toggle("hist-jour-titre-ouvert", !ouvert);
+      });
+    });
 
     wrap.querySelectorAll(".hist-photo-renommer").forEach(btn => {
       btn.addEventListener("click", async () => {
