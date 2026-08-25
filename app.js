@@ -166,16 +166,20 @@ const PRODUITS_HABITUELS_LIVRAISON = [
 function creerLigneLiaison(nomInitial) {
   const div = document.createElement("div");
   div.className = "ligne-liaison";
+  const options = PRODUITS_HABITUELS_LIVRAISON.map(p =>
+    `<option value="${p}"${p === nomInitial ? " selected" : ""}>${p}</option>`).join("");
   div.innerHTML = `
     <div class="ligne-liaison-nom">
-      <input type="text" placeholder="Produit" class="ligne-liaison-produit" value="${nomInitial || ""}">
+      <select class="ligne-liaison-produit">
+        <option value="" disabled${nomInitial ? "" : " selected"}>Choisir un produit…</option>
+        ${options}
+        <option value="__autre__">Autre (préciser)…</option>
+      </select>
+      <input type="text" placeholder="Nom du produit" class="ligne-liaison-produit-autre hidden">
     </div>
     <div class="ligne-liaison-grille">
       <div class="ligne-liaison-champ"><label>Qté commandée</label><input type="text" class="ligne-liaison-qte-cmd"></div>
-      <div class="ligne-liaison-champ"><label>Qté livrée</label><input type="text" class="ligne-liaison-qte-liv"></div>
-      <div class="ligne-liaison-champ"><label>T° départ (°C)</label><input type="text" inputmode="decimal" class="ligne-liaison-temp-depart"></div>
-      <div class="ligne-liaison-champ"><label>T° arrivée (°C)</label><input type="text" inputmode="decimal" class="ligne-liaison-temp-arrivee"></div>
-      <div class="ligne-liaison-champ" style="grid-column:1 / -1"><label>Contrôle réception</label>
+      <div class="ligne-liaison-champ"><label>Contrôle réception</label>
         <select class="ligne-liaison-conforme">
           <option value="C">Conforme</option>
           <option value="NC">Non conforme</option>
@@ -183,6 +187,12 @@ function creerLigneLiaison(nomInitial) {
       </div>
     </div>
     <button type="button" class="ligne-liaison-suppr">🗑 Retirer ce produit</button>`;
+  const select = div.querySelector(".ligne-liaison-produit");
+  const autre = div.querySelector(".ligne-liaison-produit-autre");
+  select.addEventListener("change", () => {
+    autre.classList.toggle("hidden", select.value !== "__autre__");
+    if (select.value === "__autre__") autre.focus();
+  });
   div.querySelector(".ligne-liaison-suppr").addEventListener("click", () => div.remove());
   return div;
 }
@@ -203,14 +213,17 @@ function lireLignesLiaison() {
   const container = document.getElementById("liv-lignes");
   const lignes = [];
   container.querySelectorAll(".ligne-liaison").forEach(div => {
-    const produit = div.querySelector(".ligne-liaison-produit").value.trim();
+    const select = div.querySelector(".ligne-liaison-produit");
+    const produit = select.value === "__autre__"
+      ? div.querySelector(".ligne-liaison-produit-autre").value.trim()
+      : select.value.trim();
     if (!produit) return;
     lignes.push({
       produit,
       qteCommandee: div.querySelector(".ligne-liaison-qte-cmd").value.trim(),
-      qteLivree: div.querySelector(".ligne-liaison-qte-liv").value.trim(),
-      tempDepart: temperatureSaisie(div.querySelector(".ligne-liaison-temp-depart").value),
-      tempArrivee: temperatureSaisie(div.querySelector(".ligne-liaison-temp-arrivee").value),
+      qteLivree: "",   // rempli à la main sur le PDF papier au moment de la livraison
+      tempDepart: "",  // idem
+      tempArrivee: "", // idem
       conforme: div.querySelector(".ligne-liaison-conforme").value
     });
   });
@@ -241,12 +254,7 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
 
     await apiCall("sendBonLivraison", {
       fournisseur: document.getElementById("liv-fournisseur").value,
-      preparateur: document.getElementById("liv-preparateur").value,
-      chauffeur: document.getElementById("liv-chauffeur").value,
-      receptionneur: document.getElementById("liv-receptionneur").value,
-      tempCamion: document.getElementById("liv-temp-camion").value,
       dateCommande: document.getElementById("liv-date-commande").value,
-      dateLivraison: document.getElementById("liv-date-livraison").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
       destinataire: document.getElementById("liv-email").value,
@@ -311,12 +319,7 @@ document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
   try {
     const data = await apiCall("genererPdfBonLivraison", {
       fournisseur: document.getElementById("liv-fournisseur").value,
-      preparateur: document.getElementById("liv-preparateur").value,
-      chauffeur: document.getElementById("liv-chauffeur").value,
-      receptionneur: document.getElementById("liv-receptionneur").value,
-      tempCamion: document.getElementById("liv-temp-camion").value,
       dateCommande: document.getElementById("liv-date-commande").value,
-      dateLivraison: document.getElementById("liv-date-livraison").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
       personne: PRENOM
