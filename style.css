@@ -216,6 +216,20 @@ tbody tr:last-child td{border-bottom:none}
 }
 .hist-supprimer-btn:active{background:#FBEAEA}
 
+/* Historique — Traçabilité (photos regroupées par jour) */
+.hist-jour-bloc{margin-bottom:18px}
+.hist-jour-titre{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:8px;padding:10px 4px;border-bottom:2px solid var(--teal)}
+.hist-jour-semaine{font-family:var(--body);font-size:11px;font-weight:500;color:var(--ink-soft)}
+.hist-jour-photos{display:flex;flex-direction:column;gap:8px}
+.hist-photo-item{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.hist-photo-plat{font-size:13.5px;font-weight:700}
+.hist-photo-meta{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+.hist-photo-actions{display:flex;gap:6px;flex-wrap:wrap}
+.hist-photo-btn{padding:7px 10px;font-size:11.5px;text-decoration:none;white-space:nowrap}
+
 /* ---------------- Toast ---------------- */
 .toast{
   position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(10px);
@@ -251,6 +265,7 @@ tbody tr:last-child td{border-bottom:none}
   padding:14px 16px;font-size:14.5px;font-weight:600;color:var(--ink);cursor:pointer;
 }
 .plat-card:active{background:#EAF4F1;border-color:var(--teal)}
+.plat-card-sans-photo{color:var(--rust);border-color:var(--rust)}
 .plat-card-row{display:flex;gap:8px;align-items:stretch}
 .plat-card-flex{flex:1}
 .plat-photo-btn{
