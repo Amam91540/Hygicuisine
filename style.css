@@ -218,9 +218,16 @@ tbody tr:last-child td{border-bottom:none}
 
 /* Historique — Traçabilité (photos regroupées par jour) */
 .hist-jour-bloc{margin-bottom:18px}
-.hist-jour-titre{font-family:var(--display);font-size:16px;font-weight:700;margin-bottom:8px;padding:10px 4px;border-bottom:2px solid var(--teal)}
+.hist-jour-titre{
+  width:100%;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:8px;
+  padding:14px 16px;cursor:pointer;text-align:left;color:var(--ink);
+}
+.hist-jour-titre-ouvert{border-color:var(--teal);background:#EAF4F1}
 .hist-jour-semaine{font-family:var(--body);font-size:11px;font-weight:500;color:var(--ink-soft)}
-.hist-jour-photos{display:flex;flex-direction:column;gap:8px}
+.hist-jour-compteur{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--teal-dark);white-space:nowrap}
+.hist-jour-photos{display:flex;flex-direction:column;gap:8px;padding:2px 0 8px}
 .hist-photo-item{
   background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;
   display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
