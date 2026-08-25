@@ -242,8 +242,9 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
     });
     resultEl.textContent = "✓ Bon de livraison envoyé par e-mail.";
     resultEl.classList.add("ok");
-    document.getElementById("liv-lignes").innerHTML = "";
-    document.getElementById("liv-lignes").appendChild(creerLigneLiaison());
+    const cont = document.getElementById("liv-lignes");
+    cont.innerHTML = "";
+    PRODUITS_HABITUELS_LIVRAISON.forEach(nom => cont.appendChild(creerLigneCommandeFixe(nom)));
     toast("Bon de livraison envoyé");
   } catch (err) {
     resultEl.textContent = "Erreur : " + err.message;
