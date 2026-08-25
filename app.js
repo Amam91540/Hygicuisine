@@ -234,7 +234,6 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
 
     await apiCall("sendBonLivraison", {
       fournisseur: "UCP Brétigny",
-      dateCommande: document.getElementById("liv-date-commande").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
       destinataire: document.getElementById("liv-email").value,
@@ -299,7 +298,6 @@ document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
   try {
     const data = await apiCall("genererPdfBonLivraison", {
       fournisseur: "UCP Brétigny",
-      dateCommande: document.getElementById("liv-date-commande").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
       personne: PRENOM
