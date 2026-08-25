@@ -155,7 +155,7 @@ function lireLignes(containerId) {
   return lignes;
 }
 
-// ---- Lignes enrichies pour le Bon de livraison (façon fiche de liaison) ----
+// ---- Liste des produits pour le Bon de livraison (façon fiche de commande) ----
 const PRODUITS_HABITUELS_LIVRAISON = [
   "Huile d'olive 1L", "Huile de colza 5L", "Huile de friture", "Vinaigre coloré 1L5",
   "Sauce salade 5L", "Mayonnaise seau 5L", "Moutarde de Dijon seau 5kg",
@@ -163,68 +163,48 @@ const PRODUITS_HABITUELS_LIVRAISON = [
   "Persil surg 500g/sachet", "Ciboulette surg 250g/sachet", "Ail surg 250g/sachet", "Echalote surg 250g/sachet"
 ];
 
-function creerLigneLiaison(nomInitial) {
-  const div = document.createElement("div");
-  div.className = "ligne-liaison";
-  const options = PRODUITS_HABITUELS_LIVRAISON.map(p =>
-    `<option value="${p}"${p === nomInitial ? " selected" : ""}>${p}</option>`).join("");
-  div.innerHTML = `
-    <div class="ligne-liaison-nom">
-      <select class="ligne-liaison-produit">
-        <option value="" disabled${nomInitial ? "" : " selected"}>Choisir un produit…</option>
-        ${options}
-        <option value="__autre__">Autre (préciser)…</option>
-      </select>
-      <input type="text" placeholder="Nom du produit" class="ligne-liaison-produit-autre hidden">
-    </div>
-    <div class="ligne-liaison-grille">
-      <div class="ligne-liaison-champ"><label>Qté commandée</label><input type="text" class="ligne-liaison-qte-cmd"></div>
-      <div class="ligne-liaison-champ"><label>Contrôle réception</label>
-        <select class="ligne-liaison-conforme">
-          <option value="C">Conforme</option>
-          <option value="NC">Non conforme</option>
-        </select>
-      </div>
-    </div>
-    <button type="button" class="ligne-liaison-suppr">🗑 Retirer ce produit</button>`;
-  const select = div.querySelector(".ligne-liaison-produit");
-  const autre = div.querySelector(".ligne-liaison-produit-autre");
-  select.addEventListener("change", () => {
-    autre.classList.toggle("hidden", select.value !== "__autre__");
-    if (select.value === "__autre__") autre.focus();
-  });
-  div.querySelector(".ligne-liaison-suppr").addEventListener("click", () => div.remove());
-  return div;
+function creerLigneCommandeFixe(nom) {
+  const tr = document.createElement("tr");
+  tr.className = "ligne-liaison";
+  tr.innerHTML = `
+    <td>${nom}</td>
+    <td><input type="text" class="ligne-liaison-qte" data-produit="${nom}"></td>`;
+  return tr;
+}
+
+function creerLigneCommandeLibre() {
+  const tr = document.createElement("tr");
+  tr.className = "ligne-liaison ligne-liaison-libre";
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Nom du produit" class="ligne-liaison-nom-libre"></td>
+    <td><input type="text" class="ligne-liaison-qte"></td>`;
+  return tr;
 }
 
 document.getElementById("liv-ajouter-ligne").addEventListener("click", () => {
-  document.getElementById("liv-lignes").appendChild(creerLigneLiaison());
+  document.getElementById("liv-lignes").appendChild(creerLigneCommandeLibre());
 });
-document.getElementById("liv-charger-habituels").addEventListener("click", () => {
-  const cont = document.getElementById("liv-lignes");
-  cont.innerHTML = "";
-  PRODUITS_HABITUELS_LIVRAISON.forEach(nom => cont.appendChild(creerLigneLiaison(nom)));
-  toast("Liste habituelle chargée");
-});
-// une ligne vide par défaut au premier chargement
-document.getElementById("liv-lignes").appendChild(creerLigneLiaison());
+// liste habituelle chargée d'office, comme sur la fiche de commande papier
+PRODUITS_HABITUELS_LIVRAISON.forEach(nom =>
+  document.getElementById("liv-lignes").appendChild(creerLigneCommandeFixe(nom)));
 
 function lireLignesLiaison() {
   const container = document.getElementById("liv-lignes");
   const lignes = [];
-  container.querySelectorAll(".ligne-liaison").forEach(div => {
-    const select = div.querySelector(".ligne-liaison-produit");
-    const produit = select.value === "__autre__"
-      ? div.querySelector(".ligne-liaison-produit-autre").value.trim()
-      : select.value.trim();
-    if (!produit) return;
+  container.querySelectorAll(".ligne-liaison").forEach(tr => {
+    const estLibre = tr.classList.contains("ligne-liaison-libre");
+    const produit = estLibre
+      ? tr.querySelector(".ligne-liaison-nom-libre").value.trim()
+      : tr.querySelector(".ligne-liaison-qte").dataset.produit;
+    const qte = tr.querySelector(".ligne-liaison-qte").value.trim();
+    if (!produit || !qte) return; // on ne commande que ce qui a une quantité renseignée
     lignes.push({
       produit,
-      qteCommandee: div.querySelector(".ligne-liaison-qte-cmd").value.trim(),
+      qteCommandee: qte,
       qteLivree: "",   // rempli à la main sur le PDF papier au moment de la livraison
       tempDepart: "",  // idem
       tempArrivee: "", // idem
-      conforme: div.querySelector(".ligne-liaison-conforme").value
+      conforme: ""     // idem
     });
   });
   return lignes;
@@ -253,7 +233,7 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
     }
 
     await apiCall("sendBonLivraison", {
-      fournisseur: document.getElementById("liv-fournisseur").value,
+      fournisseur: "UCP Brétigny",
       dateCommande: document.getElementById("liv-date-commande").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
@@ -318,7 +298,7 @@ document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
   resultEl.className = "result-badge";
   try {
     const data = await apiCall("genererPdfBonLivraison", {
-      fournisseur: document.getElementById("liv-fournisseur").value,
+      fournisseur: "UCP Brétigny",
       dateCommande: document.getElementById("liv-date-commande").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
