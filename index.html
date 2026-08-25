@@ -98,22 +98,18 @@
       <div id="sub-livraison" class="subpanel active">
         <form id="form-livraison" class="card-form">
           <p class="dashboard-note" style="margin-top:-6px">
-            Reprend le format de la fiche de liaison UCP → satellite. Les champs remplis à la main sur place
-            (préparateur, chauffeur, réceptionneur, T° camion, date de livraison, quantités et températures reçues)
-            restent présents en blanc sur le PDF imprimable, mais ne sont pas à saisir ici.
+            Indique juste les quantités à commander. Tout le reste (préparateur, chauffeur, réceptionneur,
+            températures, quantités livrées, contrôles) se remplit à la main sur le PDF, comme sur la fiche papier.
           </p>
-          <label>Fournisseur / UCP
-            <input type="text" id="liv-fournisseur" placeholder="Ex. UCP Brétigny sur Orge">
+          <label>Date de la commande
+            <input type="date" id="liv-date-commande">
           </label>
-          <div class="liv-identite-grid">
-            <label>Date de la commande
-              <input type="date" id="liv-date-commande">
-            </label>
-          </div>
 
-          <div id="liv-lignes"></div>
-          <button type="button" id="liv-ajouter-ligne" class="btn-secondary">+ Ajouter un produit</button>
-          <button type="button" id="liv-charger-habituels" class="btn-secondary">↺ Charger la liste habituelle (13 produits)</button>
+          <table class="liv-commande-table">
+            <thead><tr><th>Nom du produit</th><th>Quantité à commander</th></tr></thead>
+            <tbody id="liv-lignes"></tbody>
+          </table>
+          <button type="button" id="liv-ajouter-ligne" class="btn-secondary">+ Ajouter un autre produit</button>
 
           <label>Photo du bon papier (facultatif)
             <input type="file" id="liv-photo" accept="image/*" capture="environment">
