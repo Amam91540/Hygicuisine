@@ -157,10 +157,10 @@ function lireLignes(containerId) {
 
 // ---- Liste des produits pour le Bon de livraison (façon fiche de commande) ----
 const PRODUITS_HABITUELS_LIVRAISON = [
-  "Huile d'olive 1L", "Huile de colza 5L", "Huile de friture", "Vinaigre coloré 1L5",
-  "Sauce salade 5L", "Mayonnaise seau 5L", "Moutarde de Dijon seau 5kg",
+  "Huile d'olive 1L", "Huile de Colza 5L", "Huile de friture", "Vinaigre coloré",
+  "Sauce salade", "Mayonnaise seau 5L", "Moutarde de dijon seau 5Kg",
   "Sel fin 1kg", "Poivre gris moulu",
-  "Persil surg 500g/sachet", "Ciboulette surg 250g/sachet", "Ail surg 250g/sachet", "Echalote surg 250g/sachet"
+  "Persil surgelé 500gr", "Ciboulette surgelée 250gr", "Ail surgelé 250gr", "Echalote surgelée 250gr"
 ];
 
 function creerLigneCommandeFixe(nom) {
