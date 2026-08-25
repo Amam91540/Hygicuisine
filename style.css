@@ -184,6 +184,30 @@ body{
   border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:var(--body);
 }
 
+/* Fiche de liaison — identité et lignes produit enrichies */
+.liv-identite-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.liv-identite-grid label{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.liv-identite-grid input{
+  border:1px solid var(--line);border-radius:9px;padding:10px;font-size:14px;font-family:var(--body);
+}
+
+.ligne-liaison{
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
+}
+.ligne-liaison-nom{margin-bottom:8px}
+.ligne-liaison-nom input{
+  width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:14px;font-weight:600;font-family:var(--body);
+}
+.ligne-liaison-grille{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ligne-liaison-champ{display:flex;flex-direction:column;gap:4px}
+.ligne-liaison-champ label{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.02em}
+.ligne-liaison-champ input, .ligne-liaison-champ select{
+  border:1px solid var(--line);border-radius:7px;padding:8px;font-size:13px;font-family:var(--body);width:100%;
+}
+.ligne-liaison-suppr{
+  margin-top:8px;background:none;border:none;color:var(--rust);font-size:12px;font-weight:600;cursor:pointer;padding:4px;
+}
+
 /* ---------------- Historique table ---------------- */
 .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
@@ -312,6 +336,9 @@ tbody tr:last-child td{border-bottom:none}
   border:1px solid var(--line);border-radius:9px;padding:10px;text-align:center;background:#FBFDFD;
 }
 .enr-mini-input:focus{outline:2px solid var(--teal);outline-offset:1px}
+.enr-mini-input.enr-alerte{
+  background:#FDEDEB;border:2px solid var(--rust);color:var(--rust);font-weight:700;
+}
 .enr-mini-statut{font-size:11.5px;margin-top:6px;font-weight:600}
 
 /* Plats : tableau façon classeur Excel — produit en 1re colonne, une colonne par étape */
