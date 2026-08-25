@@ -29,6 +29,11 @@ function fileToBase64(file) {
   });
 }
 
+// Accepte aussi bien "3,7" (clavier français) que "3.7" avant d'envoyer une température.
+function temperatureSaisie(valeurBrute) {
+  return (valeurBrute || "").replace(",", ".").trim();
+}
+
 // ================= CONNEXION =================
 document.getElementById("btn-entrer").addEventListener("click", async () => {
   const code = document.getElementById("code-acces").value.trim();
@@ -719,7 +724,7 @@ async function rafraichirEtapesModal() {
     row.innerHTML = `
       <div class="etape-nom">${etape}${info ? ` <span class="etape-deja ${String(info.conforme).includes("NON") ? "cell-bad" : "cell-ok"}">(dernier : ${info.temperature}°C à ${info.heure})</span>` : ""}</div>
       <div class="etape-champs">
-        <input type="number" step="0.1" class="etape-temp" placeholder="0.0">
+        <input type="text" inputmode="decimal" class="etape-temp" placeholder="0.0">
         <button type="button" class="btn-secondary etape-btn">Enregistrer</button>
       </div>
       <div class="etape-statut result-badge"></div>`;
@@ -737,7 +742,7 @@ async function rafraichirEtapesModal() {
       try {
         const res = await apiCall("addTempPlatEtape", {
           semaine: modalContext.semaine, jour: modalContext.jour, plat: modalContext.plat,
-          type: modalContext.type, etape, temperature: input.value, personne: PRENOM
+          type: modalContext.type, etape, temperature: temperatureSaisie(input.value), personne: PRENOM
         });
         statut.textContent = res.conforme ? "✓ Enregistré, conforme." : "⚠ Enregistré, hors norme.";
         statut.className = "etape-statut result-badge " + (res.conforme ? "ok" : "bad");
@@ -1066,7 +1071,7 @@ function celluleEtapePlatENR(plat, type, etape, info, avecHeure) {
   const statut = info
     ? (horsNorme ? `⚠ enregistré` : `✓ enregistré`)
     : "";
-  let html = `<input type="number" step="0.1" class="enr-mini-input enr-plat-temp-input${horsNorme ? " enr-alerte" : ""}"
+  let html = `<input type="text" inputmode="decimal" class="enr-mini-input enr-plat-temp-input${horsNorme ? " enr-alerte" : ""}"
     data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${valeur}" placeholder="°C">`;
   if (avecHeure) {
     html += `<input type="time" class="enr-mini-input enr-plat-heure-input"
@@ -1105,7 +1110,7 @@ async function enregistrerTempPlatTableENR(input, semaine, jour) {
   try {
     const res = await apiCall("addTempPlatEtape", {
       semaine, jour, plat, type, etape,
-      temperature: inputTemp.value,
+      temperature: temperatureSaisie(inputTemp.value),
       heure: inputHeure ? inputHeure.value : "",
       personne: PRENOM
     });
@@ -1131,7 +1136,7 @@ function celluleEnceinteENR(enceinte, moment, releve) {
   const valeur = releve ? releve.temperature : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
   const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
-  return `<input type="number" step="0.1" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
+  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempEnceinteENR(input, semaine, jour) {
@@ -1142,7 +1147,7 @@ async function enregistrerTempEnceinteENR(input, semaine, jour) {
   const typeEnceinte = enceinte === "Congélateur" ? "negatif" : "positif";
   try {
     const res = await apiCall("addTempEnceinte", {
-      enceinte, typeEnceinte, moment, temperature: input.value, semaine, jour, personne: PRENOM
+      enceinte, typeEnceinte, moment, temperature: temperatureSaisie(input.value), semaine, jour, personne: PRENOM
     });
     toast(res.conforme ? `${enceinte} (${moment}) enregistrée` : `${enceinte} (${moment}) — hors norme, enregistrée quand même`, !res.conforme);
     input.classList.toggle("enr-alerte", !res.conforme);
@@ -1169,7 +1174,7 @@ function celluleDistributionENR(nom, type, releve) {
   const valeur = releve ? releve.temperature : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
   const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
-  return `<input type="number" step="0.1" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
+  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempDistributionENR(input, semaine, jour) {
@@ -1177,7 +1182,7 @@ async function enregistrerTempDistributionENR(input, semaine, jour) {
   const nom = input.dataset.distribution;
   const type = input.dataset.type;
   try {
-    const res = await apiCall("addTempDistribution", { semaine, jour, nom, type, temperature: input.value, personne: PRENOM });
+    const res = await apiCall("addTempDistribution", { semaine, jour, nom, type, temperature: temperatureSaisie(input.value), personne: PRENOM });
     toast(res.conforme ? `${nom} enregistrée` : `${nom} — hors norme, enregistrée quand même`, !res.conforme);
     input.classList.toggle("enr-alerte", !res.conforme);
     const statut = input.parentElement.querySelector(".enr-mini-statut");
