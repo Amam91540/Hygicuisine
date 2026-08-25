@@ -97,22 +97,48 @@
 
       <div id="sub-livraison" class="subpanel active">
         <form id="form-livraison" class="card-form">
-          <label>Fournisseur
-            <input type="text" id="liv-fournisseur" placeholder="Ex. Metro">
+          <p class="dashboard-note" style="margin-top:-6px">
+            Reprend le format de la fiche de liaison UCP → satellite (livraison en liaison froide).
+          </p>
+          <label>Fournisseur / UCP
+            <input type="text" id="liv-fournisseur" placeholder="Ex. UCP Brétigny sur Orge">
           </label>
+          <div class="liv-identite-grid">
+            <label>Préparateur (UCP)
+              <input type="text" id="liv-preparateur" placeholder="Nom">
+            </label>
+            <label>Chauffeur
+              <input type="text" id="liv-chauffeur" placeholder="Nom">
+            </label>
+            <label>Réceptionneur (satellite)
+              <input type="text" id="liv-receptionneur" placeholder="Nom">
+            </label>
+            <label>T° enceinte négative camion (°C)
+              <input type="text" inputmode="decimal" id="liv-temp-camion" placeholder="Ex. -18">
+            </label>
+            <label>Date de la commande
+              <input type="date" id="liv-date-commande">
+            </label>
+            <label>Date de livraison
+              <input type="date" id="liv-date-livraison">
+            </label>
+          </div>
+
+          <button type="button" id="liv-charger-habituels" class="btn-secondary">↺ Charger la liste habituelle</button>
           <div id="liv-lignes"></div>
           <button type="button" id="liv-ajouter-ligne" class="btn-secondary">+ Ajouter un produit</button>
+
           <label>Photo du bon papier (facultatif)
             <input type="file" id="liv-photo" accept="image/*" capture="environment">
           </label>
-          <label>Remarque générale
+          <label>Remarque générale / Observations
             <input type="text" id="liv-remarque" placeholder="Ex. colis endommagé">
           </label>
           <label>Envoyer à (e-mail)
             <input type="email" id="liv-email" required placeholder="ex. direction@monetablissement.fr">
           </label>
           <button type="submit" class="btn-primary">Envoyer le bon de livraison</button>
-          <button type="button" id="liv-pdf-btn" class="btn-secondary">📄 Télécharger en PDF</button>
+          <button type="button" id="liv-pdf-btn" class="btn-secondary">📄 Générer le PDF (imprimable)</button>
         </form>
       </div>
 
