@@ -114,6 +114,26 @@
           <label>Remarque générale / Observations
             <input type="text" id="liv-remarque" placeholder="Ex. colis endommagé">
           </label>
+
+          <p class="dashboard-note" style="margin:0">
+            Signatures (facultatif — à signer sur place si la tablette est disponible au moment de la livraison).
+          </p>
+          <div class="signature-bloc">
+            <label>Préparateur (UCP)</label>
+            <canvas id="signature-preparateur" class="signature-canvas" width="320" height="120"></canvas>
+            <button type="button" class="btn-secondary signature-effacer" data-cible="signature-preparateur">Effacer</button>
+          </div>
+          <div class="signature-bloc">
+            <label>Chauffeur</label>
+            <canvas id="signature-chauffeur" class="signature-canvas" width="320" height="120"></canvas>
+            <button type="button" class="btn-secondary signature-effacer" data-cible="signature-chauffeur">Effacer</button>
+          </div>
+          <div class="signature-bloc">
+            <label>Réceptionneur (satellite)</label>
+            <canvas id="signature-receptionneur" class="signature-canvas" width="320" height="120"></canvas>
+            <button type="button" class="btn-secondary signature-effacer" data-cible="signature-receptionneur">Effacer</button>
+          </div>
+
           <label>Envoyer à (e-mail)
             <input type="email" id="liv-email" required value="ucp.bretigny.sur.orge@gmail.com" placeholder="ex. direction@monetablissement.fr">
           </label>
