@@ -615,6 +615,7 @@ function afficherJourParIndexVue(vue, idx) {
       card.type = "button";
       card.className = "plat-card";
       card.textContent = it.plat;
+      card.dataset.plat = it.plat;
       card.addEventListener("click", () => ouvrirPlatModal(semaine, jour, it.plat, cat));
 
       if (vue === "tracabilite") {
@@ -640,6 +641,32 @@ function afficherJourParIndexVue(vue, idx) {
       }
     });
   });
+
+  if (vue === "tracabilite") appliquerAlerteSansPhoto(semaine, jour);
+}
+
+// Met en rouge le nom d'un plat sur la page Traçabilité s'il n'a aucune photo
+// rattachée — sauf si "Préparé par l'UCP" est coché, qui annule cette alerte
+// (mais n'empêche jamais d'ajouter une photo).
+async function appliquerAlerteSansPhoto(semaine, jour) {
+  try {
+    const data = await apiCall("getStatutPhotosJour", { semaine, jour });
+    const avecPhoto = new Set(data.platsAvecPhoto || []);
+    const indexUCP = data.indexUCP || {};
+    document.querySelectorAll(`#traca-jour-liste .plat-card[data-plat]`).forEach(card => {
+      const plat = card.dataset.plat;
+      const sansPhoto = !avecPhoto.has(plat) && !indexUCP[plat];
+      card.classList.toggle("plat-card-sans-photo", sansPhoto);
+    });
+  } catch (e) { /* pas grave si l'alerte ne peut pas se charger */ }
+}
+
+// Rafraîchit l'alerte "sans photo" seulement si la modale a été ouverte depuis la page Traçabilité.
+function appliquerAlerteSansPhotoSiVisible() {
+  const section = document.getElementById("section-tracabilite");
+  if (section && section.classList.contains("active")) {
+    appliquerAlerteSansPhoto(modalContext.semaine, modalContext.jour);
+  }
 }
 
 // -- Prise de photo rapide depuis la liste de la page Traçabilité --
@@ -654,6 +681,7 @@ document.getElementById("traca-photo-rapide").addEventListener("change", async (
       photoBase64: base64, personne: PRENOM
     });
     toast(`Photo ajoutée — ${tracaPhotoContext.plat}`);
+    appliquerAlerteSansPhoto(tracaPhotoContext.semaine, tracaPhotoContext.jour);
   } catch (err) {
     toast("Erreur photo : " + err.message, true);
   } finally {
@@ -729,6 +757,7 @@ document.getElementById("plat-modal-ucp").addEventListener("change", async (e) =
       ucp: e.target.checked, personne: PRENOM
     });
     toast(e.target.checked ? "Marqué « préparé par l'UCP »" : "Marqué « non préparé par l'UCP »");
+    appliquerAlerteSansPhotoSiVisible();
   } catch (err) {
     toast("Erreur : " + err.message, true);
     e.target.checked = !e.target.checked; // annule visuellement si l'enregistrement a échoué
@@ -845,6 +874,7 @@ document.getElementById("plat-modal-photo").addEventListener("change", async (e)
     toast("Photo ajoutée");
     e.target.value = "";
     rafraichirPhotosModal();
+    appliquerAlerteSansPhotoSiVisible();
   } catch (err) {
     toast("Erreur photo : " + err.message, true);
   }
@@ -1315,6 +1345,12 @@ const COLONNES_MASQUEES_HISTORIQUE = {
 async function chargerHistorique(onglet) {
   const wrap = document.getElementById("hist-table-wrap");
   wrap.innerHTML = '<p class="table-empty">Chargement…</p>';
+
+  if (onglet === "tracabilite_photos") {
+    await chargerHistoriqueTracabilite(wrap);
+    return;
+  }
+
   try {
     const data = await apiCall("getHistorique", { onglet, limite: 50 });
     if (!data.lignes || data.lignes.length === 0) {
@@ -1376,3 +1412,77 @@ async function supprimerLigneHistorique(onglet, ligne) {
     toast("Erreur : " + err.message, true);
   }
 }
+
+// ================= HISTORIQUE — TRAÇABILITÉ (photos par jour) =================
+async function chargerHistoriqueTracabilite(wrap) {
+  try {
+    const data = await apiCall("getPhotosGroupeesParJour", {});
+    if (!data.jours || data.jours.length === 0) {
+      wrap.innerHTML = '<p class="table-empty">Aucune photo enregistrée pour le moment.</p>';
+      return;
+    }
+    let html = "";
+    data.jours.forEach(j => {
+      const dateJour = calculerDateJour(j.semaine, j.jour);
+      const titre = dateJour ? `${j.jour} ${dateJour.getDate()}` : j.jour;
+      html += `<div class="hist-jour-bloc">
+        <div class="hist-jour-titre">${titre} <span class="hist-jour-semaine">— ${j.semaine}</span></div>
+        <div class="hist-jour-photos">`;
+      j.photos.forEach(p => {
+        html += `<div class="hist-photo-item">
+          <div class="hist-photo-info">
+            <div class="hist-photo-plat">${p.plat}</div>
+            <div class="hist-photo-meta">${p.heure} — ${p.personne || ""}</div>
+          </div>
+          <div class="hist-photo-actions">
+            <a href="${p.lien}" target="_blank" rel="noopener" class="btn-secondary hist-photo-btn">Ouvrir</a>
+            <button type="button" class="btn-secondary hist-photo-btn hist-photo-renommer" data-lien="${p.lien}">✏️ Renommer</button>
+            <button type="button" class="btn-secondary hist-photo-btn hist-photo-remplacer" data-lien="${p.lien}">🔄 Remplacer</button>
+          </div>
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll(".hist-photo-renommer").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const nouveauNom = prompt("Nouveau nom pour cette photo :");
+        if (!nouveauNom) return;
+        try {
+          await apiCall("renommerPhotoPlat", { lien: btn.dataset.lien, nouveauNom });
+          toast("Photo renommée");
+        } catch (err) {
+          toast("Erreur : " + err.message, true);
+        }
+      });
+    });
+
+    wrap.querySelectorAll(".hist-photo-remplacer").forEach(btn => {
+      btn.addEventListener("click", () => {
+        lienARemplacerHistorique = btn.dataset.lien;
+        document.getElementById("hist-photo-remplacement").click();
+      });
+    });
+  } catch (err) {
+    wrap.innerHTML = `<p class="table-empty">Erreur de chargement : ${err.message}</p>`;
+  }
+}
+
+let lienARemplacerHistorique = null;
+document.getElementById("hist-photo-remplacement").addEventListener("change", async (e) => {
+  const fichier = e.target.files[0];
+  if (!fichier || !lienARemplacerHistorique) return;
+  const wrap = document.getElementById("hist-table-wrap");
+  try {
+    const base64 = await fileToBase64(fichier);
+    await apiCall("remplacerPhotoPlat", { lienActuel: lienARemplacerHistorique, photoBase64: base64 });
+    toast("Photo remplacée");
+    chargerHistoriqueTracabilite(wrap);
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  } finally {
+    e.target.value = "";
+    lienARemplacerHistorique = null;
+  }
+});
