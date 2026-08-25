@@ -1063,16 +1063,16 @@ function celluleEtapePlatENR(plat, type, etape, info, avecHeure) {
   const valeur = info ? info.temperature : "";
   const heureValeur = info ? info.heure : "";
   const horsNorme = info && String(info.conforme).includes("NON");
-  const statut = info ? (horsNorme
-    ? `<div class="enr-mini-statut cell-bad">⚠ enregistré</div>`
-    : `<div class="enr-mini-statut cell-ok">✓ enregistré</div>`) : "";
+  const statut = info
+    ? (horsNorme ? `⚠ enregistré` : `✓ enregistré`)
+    : "";
   let html = `<input type="number" step="0.1" class="enr-mini-input enr-plat-temp-input${horsNorme ? " enr-alerte" : ""}"
     data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${valeur}" placeholder="°C">`;
   if (avecHeure) {
     html += `<input type="time" class="enr-mini-input enr-plat-heure-input"
       data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${heureValeur}">`;
   }
-  html += statut;
+  html += `<div class="enr-mini-statut${info ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
   return html;
 }
 
@@ -1130,10 +1130,8 @@ function Utilities_formatDateFr(d) {
 function celluleEnceinteENR(enceinte, moment, releve) {
   const valeur = releve ? releve.temperature : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
-  const statut = releve ? (horsNorme
-    ? `<div class="enr-mini-statut cell-bad">⚠ ${releve.heure}</div>`
-    : `<div class="enr-mini-statut cell-ok">✓ ${releve.heure}</div>`) : "";
-  return `<input type="number" step="0.1" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0">${statut}`;
+  const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
+  return `<input type="number" step="0.1" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempEnceinteENR(input, semaine, jour) {
@@ -1148,6 +1146,12 @@ async function enregistrerTempEnceinteENR(input, semaine, jour) {
     });
     toast(res.conforme ? `${enceinte} (${moment}) enregistrée` : `${enceinte} (${moment}) — hors norme, enregistrée quand même`, !res.conforme);
     input.classList.toggle("enr-alerte", !res.conforme);
+    const statut = input.parentElement.querySelector(".enr-mini-statut");
+    if (statut) {
+      const heureLocale = new Date().toTimeString().slice(0, 5);
+      statut.textContent = (res.conforme ? "✓ " : "⚠ ") + heureLocale;
+      statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
+    }
   } catch (err) {
     toast("Erreur : " + err.message, true);
   }
@@ -1164,10 +1168,8 @@ function dernierReleveDistribution(releves, nom) {
 function celluleDistributionENR(nom, type, releve) {
   const valeur = releve ? releve.temperature : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
-  const statut = releve ? (horsNorme
-    ? `<div class="enr-mini-statut cell-bad">⚠ ${releve.heure}</div>`
-    : `<div class="enr-mini-statut cell-ok">✓ ${releve.heure}</div>`) : "";
-  return `<input type="number" step="0.1" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0">${statut}`;
+  const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
+  return `<input type="number" step="0.1" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempDistributionENR(input, semaine, jour) {
@@ -1178,6 +1180,12 @@ async function enregistrerTempDistributionENR(input, semaine, jour) {
     const res = await apiCall("addTempDistribution", { semaine, jour, nom, type, temperature: input.value, personne: PRENOM });
     toast(res.conforme ? `${nom} enregistrée` : `${nom} — hors norme, enregistrée quand même`, !res.conforme);
     input.classList.toggle("enr-alerte", !res.conforme);
+    const statut = input.parentElement.querySelector(".enr-mini-statut");
+    if (statut) {
+      const heureLocale = new Date().toTimeString().slice(0, 5);
+      statut.textContent = (res.conforme ? "✓ " : "⚠ ") + heureLocale;
+      statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
+    }
   } catch (err) {
     toast("Erreur : " + err.message, true);
   }
