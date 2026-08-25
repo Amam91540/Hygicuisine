@@ -198,6 +198,15 @@ body{
 }
 .ligne-liaison-nom-libre{text-align:left;font-weight:600}
 
+/* Signature tactile */
+.signature-bloc{display:flex;flex-direction:column;gap:8px}
+.signature-bloc label{font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.signature-canvas{
+  width:100%;height:120px;border:1px dashed var(--line);border-radius:12px;
+  background:#FBFDFD;touch-action:none;cursor:crosshair;
+}
+.signature-effacer{align-self:flex-start;padding:6px 12px;font-size:12px}
+
 /* ---------------- Historique table ---------------- */
 .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
