@@ -138,14 +138,9 @@ function creerLigneProduit() {
     <input type="text" placeholder="Unité" class="ligne-produit-unite">`;
   return div;
 }
-document.getElementById("liv-ajouter-ligne").addEventListener("click", () => {
-  document.getElementById("liv-lignes").appendChild(creerLigneProduit());
-});
 document.getElementById("etat-ajouter-ligne").addEventListener("click", () => {
   document.getElementById("etat-lignes").appendChild(creerLigneProduit());
 });
-// une ligne par défaut au chargement
-document.getElementById("liv-lignes").appendChild(creerLigneProduit());
 document.getElementById("etat-lignes").appendChild(creerLigneProduit());
 
 function lireLignes(containerId) {
@@ -160,11 +155,73 @@ function lireLignes(containerId) {
   return lignes;
 }
 
+// ---- Lignes enrichies pour le Bon de livraison (façon fiche de liaison) ----
+const PRODUITS_HABITUELS_LIVRAISON = [
+  "Huile d'olive 1L", "Huile de colza 5L", "Huile de friture", "Vinaigre coloré 1L5",
+  "Sauce salade 5L", "Mayonnaise seau 5L", "Moutarde de Dijon seau 5kg",
+  "Sel fin 1kg", "Poivre gris moulu",
+  "Persil surg 500g/sachet", "Ciboulette surg 250g/sachet", "Ail surg 250g/sachet", "Echalote surg 250g/sachet"
+];
+
+function creerLigneLiaison(nomInitial) {
+  const div = document.createElement("div");
+  div.className = "ligne-liaison";
+  div.innerHTML = `
+    <div class="ligne-liaison-nom">
+      <input type="text" placeholder="Produit" class="ligne-liaison-produit" value="${nomInitial || ""}">
+    </div>
+    <div class="ligne-liaison-grille">
+      <div class="ligne-liaison-champ"><label>Qté commandée</label><input type="text" class="ligne-liaison-qte-cmd"></div>
+      <div class="ligne-liaison-champ"><label>Qté livrée</label><input type="text" class="ligne-liaison-qte-liv"></div>
+      <div class="ligne-liaison-champ"><label>T° départ (°C)</label><input type="text" inputmode="decimal" class="ligne-liaison-temp-depart"></div>
+      <div class="ligne-liaison-champ"><label>T° arrivée (°C)</label><input type="text" inputmode="decimal" class="ligne-liaison-temp-arrivee"></div>
+      <div class="ligne-liaison-champ" style="grid-column:1 / -1"><label>Contrôle réception</label>
+        <select class="ligne-liaison-conforme">
+          <option value="C">Conforme</option>
+          <option value="NC">Non conforme</option>
+        </select>
+      </div>
+    </div>
+    <button type="button" class="ligne-liaison-suppr">🗑 Retirer ce produit</button>`;
+  div.querySelector(".ligne-liaison-suppr").addEventListener("click", () => div.remove());
+  return div;
+}
+
+document.getElementById("liv-ajouter-ligne").addEventListener("click", () => {
+  document.getElementById("liv-lignes").appendChild(creerLigneLiaison());
+});
+document.getElementById("liv-charger-habituels").addEventListener("click", () => {
+  const cont = document.getElementById("liv-lignes");
+  cont.innerHTML = "";
+  PRODUITS_HABITUELS_LIVRAISON.forEach(nom => cont.appendChild(creerLigneLiaison(nom)));
+  toast("Liste habituelle chargée");
+});
+// une ligne vide par défaut au premier chargement
+document.getElementById("liv-lignes").appendChild(creerLigneLiaison());
+
+function lireLignesLiaison() {
+  const container = document.getElementById("liv-lignes");
+  const lignes = [];
+  container.querySelectorAll(".ligne-liaison").forEach(div => {
+    const produit = div.querySelector(".ligne-liaison-produit").value.trim();
+    if (!produit) return;
+    lignes.push({
+      produit,
+      qteCommandee: div.querySelector(".ligne-liaison-qte-cmd").value.trim(),
+      qteLivree: div.querySelector(".ligne-liaison-qte-liv").value.trim(),
+      tempDepart: temperatureSaisie(div.querySelector(".ligne-liaison-temp-depart").value),
+      tempArrivee: temperatureSaisie(div.querySelector(".ligne-liaison-temp-arrivee").value),
+      conforme: div.querySelector(".ligne-liaison-conforme").value
+    });
+  });
+  return lignes;
+}
+
 // ================= FORM : BON DE LIVRAISON =================
 document.getElementById("form-livraison").addEventListener("submit", async (e) => {
   e.preventDefault();
   const resultEl = document.getElementById("stocks-result");
-  const lignes = lireLignes("liv-lignes");
+  const lignes = lireLignesLiaison();
   if (lignes.length === 0) {
     resultEl.textContent = "Ajoute au moins un produit.";
     resultEl.className = "result-badge bad";
@@ -179,11 +236,17 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
 
     // on enregistre aussi chaque ligne comme mouvement de stock
     for (const l of lignes) {
-      await apiCall("addStock", { produit: l.produit, quantite: l.quantite, unite: l.unite, personne: PRENOM });
+      await apiCall("addStock", { produit: l.produit, quantite: l.qteLivree || l.qteCommandee, unite: "", personne: PRENOM });
     }
 
     await apiCall("sendBonLivraison", {
       fournisseur: document.getElementById("liv-fournisseur").value,
+      preparateur: document.getElementById("liv-preparateur").value,
+      chauffeur: document.getElementById("liv-chauffeur").value,
+      receptionneur: document.getElementById("liv-receptionneur").value,
+      tempCamion: document.getElementById("liv-temp-camion").value,
+      dateCommande: document.getElementById("liv-date-commande").value,
+      dateLivraison: document.getElementById("liv-date-livraison").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
       destinataire: document.getElementById("liv-email").value,
@@ -192,9 +255,8 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
     });
     resultEl.textContent = "✓ Bon de livraison envoyé par e-mail.";
     resultEl.classList.add("ok");
-    e.target.reset();
     document.getElementById("liv-lignes").innerHTML = "";
-    document.getElementById("liv-lignes").appendChild(creerLigneProduit());
+    document.getElementById("liv-lignes").appendChild(creerLigneLiaison());
     toast("Bon de livraison envoyé");
   } catch (err) {
     resultEl.textContent = "Erreur : " + err.message;
@@ -235,7 +297,7 @@ document.getElementById("form-etat").addEventListener("submit", async (e) => {
 // ================= PDF : BON DE LIVRAISON / ÉTAT DES STOCKS =================
 document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
   const resultEl = document.getElementById("stocks-result");
-  const lignes = lireLignes("liv-lignes");
+  const lignes = lireLignesLiaison();
   if (lignes.length === 0) {
     resultEl.textContent = "Ajoute au moins un produit.";
     resultEl.className = "result-badge bad";
@@ -249,11 +311,17 @@ document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
   try {
     const data = await apiCall("genererPdfBonLivraison", {
       fournisseur: document.getElementById("liv-fournisseur").value,
+      preparateur: document.getElementById("liv-preparateur").value,
+      chauffeur: document.getElementById("liv-chauffeur").value,
+      receptionneur: document.getElementById("liv-receptionneur").value,
+      tempCamion: document.getElementById("liv-temp-camion").value,
+      dateCommande: document.getElementById("liv-date-commande").value,
+      dateLivraison: document.getElementById("liv-date-livraison").value,
       lignes,
       remarqueGenerale: document.getElementById("liv-remarque").value,
       personne: PRENOM
     });
-    resultEl.textContent = "✓ PDF prêt.";
+    resultEl.textContent = "✓ PDF prêt — ouvre-le puis utilise l'impression de ton navigateur pour l'imprimer.";
     resultEl.classList.add("ok");
     if (nouvelOnglet) nouvelOnglet.location.href = data.url;
     else window.open(data.url, "_blank");
