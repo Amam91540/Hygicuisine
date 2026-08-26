@@ -92,7 +92,8 @@
 
       <div class="subtabs">
         <button class="subtab-btn active" data-sub="livraison">Bon de livraison</button>
-        <button class="subtab-btn" data-sub="etat">État des stocks</button>
+        <button class="subtab-btn" data-sub="etat">Stock Alimentaire</button>
+        <button class="subtab-btn" data-sub="nonalim">Stock Non Alimentaire</button>
       </div>
 
       <div id="sub-livraison" class="subpanel active">
@@ -149,8 +150,20 @@
           <label>Envoyer à (e-mail)
             <input type="email" id="etat-email" required placeholder="ex. direction@monetablissement.fr">
           </label>
-          <button type="submit" class="btn-primary">Envoyer l'état des stocks</button>
+          <button type="submit" class="btn-primary">Envoyer le Stock Alimentaire</button>
           <button type="button" id="etat-pdf-btn" class="btn-secondary">📄 Télécharger en PDF</button>
+        </form>
+      </div>
+
+      <div id="sub-nonalim" class="subpanel">
+        <form id="form-nonalim" class="card-form">
+          <div id="nonalim-lignes"></div>
+          <button type="button" id="nonalim-ajouter-ligne" class="btn-secondary">+ Ajouter un produit</button>
+          <label>Envoyer à (e-mail)
+            <input type="email" id="nonalim-email" required placeholder="ex. direction@monetablissement.fr">
+          </label>
+          <button type="submit" class="btn-primary">Envoyer le Stock Non Alimentaire</button>
+          <button type="button" id="nonalim-pdf-btn" class="btn-secondary">📄 Télécharger en PDF</button>
         </form>
       </div>
 
