@@ -143,6 +143,11 @@ document.getElementById("etat-ajouter-ligne").addEventListener("click", () => {
 });
 document.getElementById("etat-lignes").appendChild(creerLigneProduit());
 
+document.getElementById("nonalim-ajouter-ligne").addEventListener("click", () => {
+  document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
+});
+document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
+
 function lireLignes(containerId) {
   const container = document.getElementById(containerId);
   const lignes = [];
@@ -307,7 +312,7 @@ document.getElementById("form-livraison").addEventListener("submit", async (e) =
   }
 });
 
-// ================= FORM : ÉTAT DES STOCKS =================
+// ================= FORM : STOCK ALIMENTAIRE =================
 document.getElementById("form-etat").addEventListener("submit", async (e) => {
   e.preventDefault();
   const resultEl = document.getElementById("stocks-result");
@@ -317,20 +322,50 @@ document.getElementById("form-etat").addEventListener("submit", async (e) => {
     resultEl.className = "result-badge bad";
     return;
   }
-  resultEl.textContent = "Envoi de l'état des stocks…";
+  resultEl.textContent = "Envoi du Stock Alimentaire…";
   resultEl.className = "result-badge";
   try {
     await apiCall("sendEtatStocks", {
-      lignes,
+      lignes, titre: "Stock Alimentaire",
       destinataire: document.getElementById("etat-email").value,
       personne: PRENOM
     });
-    resultEl.textContent = "✓ État des stocks envoyé par e-mail.";
+    resultEl.textContent = "✓ Stock Alimentaire envoyé par e-mail.";
     resultEl.classList.add("ok");
     e.target.reset();
     document.getElementById("etat-lignes").innerHTML = "";
     document.getElementById("etat-lignes").appendChild(creerLigneProduit());
-    toast("État des stocks envoyé");
+    toast("Stock Alimentaire envoyé");
+  } catch (err) {
+    resultEl.textContent = "Erreur : " + err.message;
+    resultEl.classList.add("bad");
+  }
+});
+
+// ================= FORM : STOCK NON ALIMENTAIRE =================
+document.getElementById("form-nonalim").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const resultEl = document.getElementById("stocks-result");
+  const lignes = lireLignes("nonalim-lignes");
+  if (lignes.length === 0) {
+    resultEl.textContent = "Ajoute au moins un produit.";
+    resultEl.className = "result-badge bad";
+    return;
+  }
+  resultEl.textContent = "Envoi du Stock Non Alimentaire…";
+  resultEl.className = "result-badge";
+  try {
+    await apiCall("sendEtatStocks", {
+      lignes, titre: "Stock Non Alimentaire",
+      destinataire: document.getElementById("nonalim-email").value,
+      personne: PRENOM
+    });
+    resultEl.textContent = "✓ Stock Non Alimentaire envoyé par e-mail.";
+    resultEl.classList.add("ok");
+    e.target.reset();
+    document.getElementById("nonalim-lignes").innerHTML = "";
+    document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
+    toast("Stock Non Alimentaire envoyé");
   } catch (err) {
     resultEl.textContent = "Erreur : " + err.message;
     resultEl.classList.add("bad");
@@ -384,7 +419,31 @@ document.getElementById("etat-pdf-btn").addEventListener("click", async () => {
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
-    const data = await apiCall("genererPdfEtatStocks", { lignes, personne: PRENOM });
+    const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Alimentaire", personne: PRENOM });
+    resultEl.textContent = "✓ PDF prêt.";
+    resultEl.classList.add("ok");
+    if (nouvelOnglet) nouvelOnglet.location.href = data.url;
+    else window.open(data.url, "_blank");
+  } catch (err) {
+    if (nouvelOnglet) nouvelOnglet.close();
+    resultEl.textContent = "Erreur : " + err.message;
+    resultEl.classList.add("bad");
+  }
+});
+
+document.getElementById("nonalim-pdf-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("stocks-result");
+  const lignes = lireLignes("nonalim-lignes");
+  if (lignes.length === 0) {
+    resultEl.textContent = "Ajoute au moins un produit.";
+    resultEl.className = "result-badge bad";
+    return;
+  }
+  const nouvelOnglet = window.open("", "_blank");
+  resultEl.textContent = "Génération du PDF…";
+  resultEl.className = "result-badge";
+  try {
+    const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Non Alimentaire", personne: PRENOM });
     resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
     if (nouvelOnglet) nouvelOnglet.location.href = data.url;
@@ -661,9 +720,14 @@ function afficherJourParIndexVue(vue, idx) {
   const items = (menuParSemaine[semaine] || []).filter(it => it.jour === jour);
   const liste = document.getElementById(ids.liste);
   liste.innerHTML = "";
-  ORDRE_CATEGORIES.forEach(cat => {
+  // Sur la page Menu, on affiche aussi les catégories vides ce jour-là, pour
+  // pouvoir y ajouter un premier plat (Entrées, Laitages/Desserts, etc.).
+  const categoriesAAfficher = vue === "menu"
+    ? ORDRE_CATEGORIES
+    : ORDRE_CATEGORIES.filter(cat => items.some(it => it.categorie === cat));
+
+  categoriesAAfficher.forEach(cat => {
     const itemsCat = items.filter(it => it.categorie === cat);
-    if (itemsCat.length === 0) return;
     const titre = document.createElement("div");
     titre.className = "plats-categorie-titre";
     titre.textContent = cat;
@@ -694,13 +758,71 @@ function afficherJourParIndexVue(vue, idx) {
         });
         ligne.appendChild(btnPhoto);
         liste.appendChild(ligne);
+      } else if (vue === "menu") {
+        // Sur la page Menu, un bouton crayon permet de renommer le plat.
+        const ligne = document.createElement("div");
+        ligne.className = "plat-card-row";
+        card.classList.add("plat-card-flex");
+        ligne.appendChild(card);
+        const btnRenommer = document.createElement("button");
+        btnRenommer.type = "button";
+        btnRenommer.className = "plat-photo-btn";
+        btnRenommer.setAttribute("aria-label", `Renommer ${it.plat}`);
+        btnRenommer.textContent = "✏️";
+        btnRenommer.addEventListener("click", () => renommerPlatDialogue(semaine, jour, cat, it.plat));
+        ligne.appendChild(btnRenommer);
+        liste.appendChild(ligne);
       } else {
         liste.appendChild(card);
       }
     });
+
+    if (vue === "menu") {
+      const btnAjouter = document.createElement("button");
+      btnAjouter.type = "button";
+      btnAjouter.className = "plat-card plat-card-ajouter";
+      btnAjouter.textContent = "+ Ajouter un plat";
+      btnAjouter.addEventListener("click", () => ajouterPlatDialogue(semaine, jour, cat));
+      liste.appendChild(btnAjouter);
+    }
   });
 
   if (vue === "tracabilite") appliquerAlerteSansPhoto(semaine, jour);
+}
+
+async function renommerPlatDialogue(semaine, jour, categorie, ancienNom) {
+  const nouveauNom = prompt(
+    `Renommer "${ancienNom}" en :\n\n⚠️ Si des températures ou des photos ont déjà été enregistrées aujourd'hui sous l'ancien nom, elles resteront liées à "${ancienNom}" et ne suivront pas le nouveau nom.`,
+    ancienNom
+  );
+  if (!nouveauNom || nouveauNom.trim() === "" || nouveauNom === ancienNom) return;
+  try {
+    const res = await apiCall("renommerPlatMenu", { semaine, jour, categorie, ancienNom, nouveauNom: nouveauNom.trim() });
+    if (res.ok) {
+      toast("Plat renommé");
+      await chargerMenu();
+    } else {
+      toast("Erreur : " + (res.error || "renommage impossible"), true);
+    }
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  }
+}
+
+async function ajouterPlatDialogue(semaine, jour, categorie) {
+  const nom = prompt(`Ajouter un plat dans "${categorie}" (${jour}) :`);
+  if (!nom || nom.trim() === "") return;
+  try {
+    const res = await apiCall("ajouterPlatMenu", { semaine, jour, categorie, plat: nom.trim() });
+    if (res.ok) {
+      toast("Plat ajouté");
+      await chargerMenu();
+    } else {
+      toast("Erreur : " + (res.error || "ajout impossible"), true);
+    }
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  }
 }
 
 // Met en rouge le nom d'un plat sur la page Traçabilité s'il n'a aucune photo
@@ -1123,6 +1245,30 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     });
   });
 
+  // -- Listeners renommer un plat --
+  cont.querySelectorAll(".enr-plat-renommer").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const ancienNom = btn.dataset.plat;
+      const nouveauNom = prompt(
+        `Renommer "${ancienNom}" en :\n\n⚠️ Si des températures ou des photos ont déjà été enregistrées aujourd'hui sous l'ancien nom, elles resteront liées à "${ancienNom}" et ne suivront pas le nouveau nom.`,
+        ancienNom
+      );
+      if (!nouveauNom || nouveauNom.trim() === "" || nouveauNom === ancienNom) return;
+      try {
+        const res = await apiCall("renommerPlatMenu", {
+          semaine, jour, categorie: btn.dataset.categorie, ancienNom, nouveauNom: nouveauNom.trim()
+        });
+        if (res.ok) {
+          toast("Plat renommé");
+          await chargerMenu();
+          construireFeuilleENR(semaine, jour, dateJour);
+        } else {
+          toast("Erreur : " + (res.error || "renommage impossible"), true);
+        }
+      } catch (err) { toast("Erreur : " + err.message, true); }
+    });
+  });
+
   // -- Listener réception marchandise --
   document.getElementById("enr-reception-btn").addEventListener("click", () => enregistrerReceptionMarchandiseENR(semaine, jour));
   document.getElementById("enr-reception-photo").addEventListener("change", () => {
@@ -1206,6 +1352,7 @@ function construireTablePlatsENR(titre, plats, type) {
     html += `<tr>
       <td class="enr-plats-table-nom">
         ${p.plat}
+        <button type="button" class="enr-plat-renommer" data-plat="${p.plat}" data-categorie="${p.categorie || ""}">✏️ Renommer</button>
         <button type="button" class="enr-plat-type-toggle" data-plat="${p.plat}" data-nouveau-type="${type === "chaud" ? "froid" : "chaud"}">
           → ${type === "chaud" ? "Froid" : "Chaud"}
         </button>
