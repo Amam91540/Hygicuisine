@@ -297,6 +297,11 @@ tbody tr:last-child td{border-bottom:none}
   font-size:19px;color:#fff;cursor:pointer;
 }
 .plat-photo-btn:active{background:var(--teal-dark)}
+.plat-card-ajouter{
+  border:1px dashed var(--teal);color:var(--teal-dark);background:#F9FBFB;
+  font-weight:600;text-align:center;margin-top:2px;
+}
+.plat-card-ajouter:active{background:#EAF4F1}
 
 /* ---------------- Modale fiche plat ---------------- */
 .modal-overlay{
@@ -384,6 +389,10 @@ tbody tr:last-child td{border-bottom:none}
 .enr-plat-type-toggle{
   display:block;margin-top:4px;background:none;border:1px solid var(--line);border-radius:7px;
   padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--teal-dark);cursor:pointer;
+}
+.enr-plat-renommer{
+  display:block;margin-top:4px;background:none;border:1px solid var(--line);border-radius:7px;
+  padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
 }
 .enr-plat-ta{
   font-family:var(--mono);font-weight:700;color:var(--ink-soft);font-size:13px;background:#F1F5F5;
