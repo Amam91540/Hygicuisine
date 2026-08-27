@@ -215,6 +215,57 @@ body{
   background:#fff;color:var(--ink);
 }
 
+/* Stock Non Alimentaire — catalogue de recherche + tableau ajout/retrait/total */
+.nonalim-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.nonalim-recherche-zone{position:relative;flex:1}
+.nonalim-recherche-zone input{
+  width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;font-size:14px;font-family:var(--body);
+}
+.nonalim-resultats{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:20;
+  background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px -12px rgba(15,43,46,0.3);
+  max-height:260px;overflow-y:auto;
+}
+.nonalim-resultat-item{
+  display:block;width:100%;text-align:left;padding:10px 12px;border:none;background:none;
+  font-size:13px;font-family:var(--body);cursor:pointer;border-bottom:1px solid var(--line);
+}
+.nonalim-resultat-item:last-child{border-bottom:none}
+.nonalim-resultat-item:active{background:#EAF4F1}
+.nonalim-resultat-vide{color:var(--ink-soft);cursor:default}
+#nonalim-deverrouiller-btn{flex-shrink:0;padding:10px 14px}
+#nonalim-deverrouiller-btn.nonalim-deverrouille-actif{background:var(--teal);color:#fff;border-color:var(--teal)}
+
+.nonalim-stock-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.nonalim-stock-table th, .nonalim-stock-table td{border:1px solid var(--line);padding:8px;text-align:center}
+.nonalim-stock-table thead th{background:#F1F5F5;font-size:11px}
+.nonalim-stock-table .nonalim-col-ajout{background:#EAF7EF}
+.nonalim-stock-table .nonalim-col-retrait{background:#FDEDEB}
+.nonalim-stock-table thead .nonalim-col-ajout{background:#C9EBD4;color:#1E7A44}
+.nonalim-stock-table thead .nonalim-col-retrait{background:#F5C9C0;color:var(--rust)}
+.nonalim-nom-input{
+  width:100%;border:none;background:none;font-size:13px;font-weight:600;font-family:var(--body);
+  text-align:left;color:var(--ink);
+}
+.nonalim-nom-input:not(:disabled){
+  border-bottom:1px dashed var(--teal);padding:2px 0;
+}
+.nonalim-qte-input{
+  width:52px;border:1px solid var(--line);border-radius:6px;padding:6px;font-size:13px;text-align:center;font-family:var(--body);
+}
+.nonalim-valider-btn{
+  margin-left:5px;width:26px;height:26px;border-radius:6px;border:none;font-weight:700;cursor:pointer;
+}
+.nonalim-valider-ajout{background:#2F8F5B;color:#fff}
+.nonalim-valider-retrait{background:var(--rust);color:#fff}
+.nonalim-total-cell{font-weight:700;font-family:var(--mono);font-size:14px}
+.nonalim-suppr-btn{background:none;border:none;font-size:14px;cursor:pointer}
+
+.nonalim-recap-zone{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.nonalim-recap-dates{display:flex;gap:10px;margin-bottom:12px}
+.nonalim-recap-dates label{flex:1;display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--ink-soft)}
+.nonalim-recap-dates input{border:1px solid var(--line);border-radius:9px;padding:9px 10px;font-size:14px;font-family:var(--body)}
+
 /* Bon de livraison — liste simple façon fiche de commande (2 colonnes) */
 .liv-commande-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .liv-commande-table th{
