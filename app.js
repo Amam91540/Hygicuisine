@@ -140,7 +140,8 @@ function creerLigneProduitAlimentaire() {
     <input type="text" placeholder="Qté" class="ligne-produit-qte">
     <select class="ligne-produit-categorie">
       ${CATEGORIES_STOCK_ALIMENTAIRE.map(c => `<option value="${c}">${c}</option>`).join("")}
-    </select>`;
+    </select>
+    <input type="date" placeholder="DLC/DDM/DLUO" class="ligne-produit-dlc" title="DLC / DDM / DLUO">`;
   return div;
 }
 
@@ -173,7 +174,10 @@ function lireLignes(containerId) {
     if (!produit) return;
     const champCategorie = div.querySelector(".ligne-produit-categorie");
     if (champCategorie) {
-      lignes.push({ produit, quantite, categorie: champCategorie.value });
+      const champDlc = div.querySelector(".ligne-produit-dlc");
+      const dlcIso = champDlc ? champDlc.value : "";
+      const dlc = dlcIso ? convertirDateIsoEnFr(dlcIso) : "";
+      lignes.push({ produit, quantite, categorie: champCategorie.value, dlc });
     } else {
       const unite = div.querySelector(".ligne-produit-unite").value.trim();
       lignes.push({ produit, quantite, unite });
@@ -1674,7 +1678,7 @@ async function chargerHistorique(onglet) {
       .map((h, i) => ({ h, i }))
       .filter(x => !colonnesAMasquer.includes(x.h))
       .map(x => x.i);
-    const peutSupprimer = onglet === "temp_enceintes" || onglet === "feuille_enr";
+    const peutSupprimer = onglet === "temp_enceintes" || onglet === "feuille_enr" || onglet === "envois";
 
     let html = "<table><thead><tr>";
     indicesAffiches.forEach(i => { html += `<th>${data.entetes[i]}</th>`; });
