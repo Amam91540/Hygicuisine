@@ -189,16 +189,24 @@ body{
   display:flex;flex-direction:column;gap:8px;
 }
 .ligne-produit-alimentaire-ligne2{
-  display:grid;grid-template-columns:0.7fr 1.3fr 1.3fr;gap:8px;
+  display:grid;grid-template-columns:0.7fr 1.1fr 1.1fr auto;gap:8px;
 }
 .ligne-produit-alimentaire-ligne2 input,
 .ligne-produit-alimentaire-ligne2 select{
   min-width:0; /* sans ça, les champs texte refusent de rétrécir sous leur largeur "naturelle" */
   width:100%;
 }
-@media (max-width:360px){
+@media (max-width:400px){
   .ligne-produit-alimentaire-ligne2{grid-template-columns:1fr 1fr;row-gap:6px}
+  .ligne-produit-alimentaire-ligne2 .ligne-produit-sortir{grid-column:1 / -1}
 }
+.ligne-produit-sortir{
+  flex-shrink:0;background:#FDEDEB;border:1px solid var(--rust);border-radius:8px;
+  color:var(--rust);font-weight:600;font-size:12px;padding:0 10px;cursor:pointer;white-space:nowrap;
+}
+.ligne-produit-sortir:active{background:#F9DAD5}
+/* Stock Non Alimentaire : le bouton Sortir s'ajoute à la grille existante (Produit/Qté/Unité). */
+.ligne-produit:not(.ligne-produit-alimentaire){grid-template-columns:2fr 1fr 1fr auto}
 .ligne-produit input{
   border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:var(--body);
 }
@@ -232,6 +240,20 @@ body{
 
 /* ---------------- Historique table ---------------- */
 .table-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:auto}
+
+/* Historique — Enceintes : en-tête groupé Matin / Soir, bien distinct visuellement */
+.hist-enceintes-table{width:100%;border-collapse:collapse;font-size:12.5px}
+.hist-enceintes-table th, .hist-enceintes-table td{
+  border:1px solid var(--line);padding:7px 9px;text-align:center;white-space:nowrap;
+}
+.hist-enceintes-table thead th{background:#F1F5F5;font-size:11px;font-weight:700}
+.hist-enceintes-table .hist-enceintes-groupe-matin{background:#EAF4F1}
+.hist-enceintes-table .hist-enceintes-groupe-soir{background:#FDF3E7}
+.hist-enceintes-table thead .hist-enceintes-groupe-matin{background:#CFE8E1;color:var(--teal-dark)}
+.hist-enceintes-table thead .hist-enceintes-groupe-soir{background:#F5E1BE;color:#8A5A12}
+.hist-enceintes-table td:first-child, .hist-enceintes-table td:nth-child(2), .hist-enceintes-table td:nth-child(3){
+  background:#fff;font-weight:600;
+}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead th{
   text-align:left;padding:10px 12px;background:#F1F5F5;color:var(--ink-soft);
