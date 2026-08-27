@@ -205,11 +205,6 @@ document.getElementById("etat-ajouter-ligne").addEventListener("click", () => {
 });
 chargerStockActuel("alimentaire", "etat-lignes", creerLigneProduitAlimentaire);
 
-document.getElementById("nonalim-ajouter-ligne").addEventListener("click", () => {
-  document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
-});
-chargerStockActuel("non_alimentaire", "nonalim-lignes", creerLigneProduit);
-
 function lireLignes(containerId) {
   const container = document.getElementById(containerId);
   const lignes = [];
@@ -292,6 +287,155 @@ function recupererSignature(canvasId) {
   const canvas = document.getElementById(canvasId);
   return canvas.dataset.signe === "1" ? canvas.toDataURL("image/png") : null;
 }
+
+// ================= STOCK NON ALIMENTAIRE (catalogue + mouvements) =================
+let catalogueNonAlim = [];
+let nomsDeverrouilles = false;
+
+async function initialiserStockNonAlim() {
+  try {
+    const dataCatalogue = await apiCall("getCatalogueNonAlim", {});
+    catalogueNonAlim = dataCatalogue.produits || [];
+  } catch (e) { /* la recherche restera juste vide si ça échoue */ }
+  await rafraichirTableauStockNonAlim();
+}
+initialiserStockNonAlim();
+
+async function rafraichirTableauStockNonAlim() {
+  const corps = document.getElementById("nonalim-stock-corps");
+  try {
+    const data = await apiCall("getStockNonAlimActuel", {});
+    corps.innerHTML = "";
+    (data.produits || []).forEach(p => corps.appendChild(construireLigneStockNonAlim(p.produit, p.quantite)));
+  } catch (e) {
+    corps.innerHTML = `<tr><td colspan="5">Erreur de chargement : ${e.message}</td></tr>`;
+  }
+}
+
+function construireLigneStockNonAlim(produit, quantite) {
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td><input type="text" class="nonalim-nom-input" value="${produit}" disabled></td>
+    <td class="nonalim-col-ajout">
+      <input type="text" inputmode="decimal" class="nonalim-qte-input" placeholder="0">
+      <button type="button" class="nonalim-valider-btn nonalim-valider-ajout" title="Valider l'ajout">✓</button>
+    </td>
+    <td class="nonalim-col-retrait">
+      <input type="text" inputmode="decimal" class="nonalim-qte-input" placeholder="0">
+      <button type="button" class="nonalim-valider-btn nonalim-valider-retrait" title="Valider le retrait">✓</button>
+    </td>
+    <td class="nonalim-total-cell">${quantite}</td>
+    <td><button type="button" class="nonalim-suppr-btn" title="Retirer ce produit du stock suivi">🗑</button></td>`;
+
+  tr.querySelector(".nonalim-nom-input").disabled = !nomsDeverrouilles;
+
+  tr.querySelector(".nonalim-nom-input").addEventListener("change", async (e) => {
+    const nouveauNom = e.target.value.trim();
+    if (!nouveauNom || nouveauNom === produit) { e.target.value = produit; return; }
+    try {
+      await apiCall("renommerProduitStockNonAlim", { ancienNom: produit, nouveauNom });
+      produit = nouveauNom;
+      toast("Produit renommé");
+    } catch (err) {
+      toast("Erreur : " + err.message, true);
+      e.target.value = produit;
+    }
+  });
+
+  const appliquer = async (type) => {
+    const champ = tr.querySelector(type === "ajout" ? ".nonalim-col-ajout .nonalim-qte-input" : ".nonalim-col-retrait .nonalim-qte-input");
+    const quantite = temperatureSaisie(champ.value); // réutilise la conversion virgule -> point
+    if (!quantite) return;
+    try {
+      const res = await apiCall("appliquerMouvementNonAlim", { produit, type, quantite, personne: PRENOM });
+      if (res.ok) {
+        tr.querySelector(".nonalim-total-cell").textContent = res.nouvelleQuantite;
+        champ.value = "";
+        toast(`${produit} : ${type === "ajout" ? "+" : "-"}${quantite}`);
+      } else {
+        toast("Erreur : " + (res.error || "opération impossible"), true);
+      }
+    } catch (err) { toast("Erreur : " + err.message, true); }
+  };
+  tr.querySelector(".nonalim-valider-ajout").addEventListener("click", () => appliquer("ajout"));
+  tr.querySelector(".nonalim-valider-retrait").addEventListener("click", () => appliquer("retrait"));
+
+  tr.querySelector(".nonalim-suppr-btn").addEventListener("click", async () => {
+    if (!confirm(`Retirer "${produit}" du stock suivi ? (son historique de mouvements est conservé)`)) return;
+    try {
+      await apiCall("supprimerProduitStockNonAlim", { produit });
+      tr.remove();
+      toast("Produit retiré du stock suivi");
+    } catch (err) { toast("Erreur : " + err.message, true); }
+  });
+
+  return tr;
+}
+
+document.getElementById("nonalim-deverrouiller-btn").addEventListener("click", () => {
+  nomsDeverrouilles = !nomsDeverrouilles;
+  document.querySelectorAll(".nonalim-nom-input").forEach(input => { input.disabled = !nomsDeverrouilles; });
+  document.getElementById("nonalim-deverrouiller-btn").classList.toggle("nonalim-deverrouille-actif", nomsDeverrouilles);
+  toast(nomsDeverrouilles ? "Noms des produits déverrouillés" : "Noms des produits reverrouillés");
+});
+
+// -- Recherche dans le catalogue pour ajouter un produit au stock suivi --
+const champRechercheNonAlim = document.getElementById("nonalim-recherche");
+const resultatsNonAlim = document.getElementById("nonalim-resultats");
+champRechercheNonAlim.addEventListener("input", () => {
+  const terme = champRechercheNonAlim.value.trim().toLowerCase();
+  if (terme.length < 2) { resultatsNonAlim.classList.add("hidden"); resultatsNonAlim.innerHTML = ""; return; }
+  const correspondances = catalogueNonAlim.filter(p => p.toLowerCase().includes(terme)).slice(0, 8);
+  if (correspondances.length === 0) {
+    resultatsNonAlim.innerHTML = `<div class="nonalim-resultat-item nonalim-resultat-vide">Aucun produit trouvé</div>`;
+  } else {
+    resultatsNonAlim.innerHTML = correspondances.map(p => `<button type="button" class="nonalim-resultat-item" data-produit="${p}">${p}</button>`).join("");
+  }
+  resultatsNonAlim.classList.remove("hidden");
+});
+resultatsNonAlim.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".nonalim-resultat-item[data-produit]");
+  if (!btn) return;
+  const produit = btn.dataset.produit;
+  const quantite = prompt(`Quantité de départ pour "${produit}" :`, "0");
+  if (quantite === null) return;
+  try {
+    await apiCall("ajouterProduitAuStockNonAlim", { produit, quantite: quantite.trim() || "0", personne: PRENOM });
+    toast(`${produit} ajouté au stock`);
+    champRechercheNonAlim.value = "";
+    resultatsNonAlim.classList.add("hidden");
+    rafraichirTableauStockNonAlim();
+  } catch (err) { toast("Erreur : " + err.message, true); }
+});
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".nonalim-recherche-zone")) resultatsNonAlim.classList.add("hidden");
+});
+
+// -- PDF récapitulatif par période --
+document.getElementById("nonalim-recap-btn").addEventListener("click", async () => {
+  const resultEl = document.getElementById("stocks-result");
+  const dateDebut = document.getElementById("nonalim-recap-debut").value;
+  const dateFin = document.getElementById("nonalim-recap-fin").value;
+  if (!dateDebut || !dateFin) {
+    resultEl.textContent = "Choisis une date de début et une date de fin.";
+    resultEl.className = "result-badge bad";
+    return;
+  }
+  const nouvelOnglet = window.open("", "_blank");
+  resultEl.textContent = "Génération du PDF récapitulatif…";
+  resultEl.className = "result-badge";
+  try {
+    const data = await apiCall("genererPdfRecapNonAlim", { dateDebut, dateFin });
+    resultEl.textContent = "✓ PDF prêt.";
+    resultEl.classList.add("ok");
+    if (nouvelOnglet) nouvelOnglet.location.href = data.url;
+    else window.open(data.url, "_blank");
+  } catch (err) {
+    if (nouvelOnglet) nouvelOnglet.close();
+    resultEl.textContent = "Erreur : " + err.message;
+    resultEl.classList.add("bad");
+  }
+});
 
 const PRODUITS_HABITUELS_LIVRAISON = [
   "Huile d'olive 1L", "Huile de Colza 5L", "Huile de friture", "Vinaigre coloré",
@@ -421,32 +565,6 @@ document.getElementById("form-etat").addEventListener("submit", async (e) => {
 });
 
 // ================= FORM : STOCK NON ALIMENTAIRE =================
-document.getElementById("form-nonalim").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const resultEl = document.getElementById("stocks-result");
-  const lignes = lireLignes("nonalim-lignes");
-  if (lignes.length === 0) {
-    resultEl.textContent = "Ajoute au moins un produit.";
-    resultEl.className = "result-badge bad";
-    return;
-  }
-  resultEl.textContent = "Envoi du Stock Non Alimentaire…";
-  resultEl.className = "result-badge";
-  try {
-    await apiCall("sendEtatStocks", {
-      lignes, titre: "Stock Non Alimentaire", type: "non_alimentaire",
-      destinataire: document.getElementById("nonalim-email").value,
-      personne: PRENOM
-    });
-    resultEl.textContent = "✓ Stock Non Alimentaire envoyé par e-mail.";
-    resultEl.classList.add("ok");
-    chargerProduitsConnus();
-    toast("Stock Non Alimentaire envoyé");
-  } catch (err) {
-    resultEl.textContent = "Erreur : " + err.message;
-    resultEl.classList.add("bad");
-  }
-});
 
 // ================= PDF : BON DE LIVRAISON / ÉTAT DES STOCKS =================
 document.getElementById("liv-pdf-btn").addEventListener("click", async () => {
@@ -496,30 +614,6 @@ document.getElementById("etat-pdf-btn").addEventListener("click", async () => {
   resultEl.className = "result-badge";
   try {
     const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Alimentaire", type: "alimentaire", personne: PRENOM });
-    resultEl.textContent = "✓ PDF prêt.";
-    resultEl.classList.add("ok");
-    if (nouvelOnglet) nouvelOnglet.location.href = data.url;
-    else window.open(data.url, "_blank");
-  } catch (err) {
-    if (nouvelOnglet) nouvelOnglet.close();
-    resultEl.textContent = "Erreur : " + err.message;
-    resultEl.classList.add("bad");
-  }
-});
-
-document.getElementById("nonalim-pdf-btn").addEventListener("click", async () => {
-  const resultEl = document.getElementById("stocks-result");
-  const lignes = lireLignes("nonalim-lignes");
-  if (lignes.length === 0) {
-    resultEl.textContent = "Ajoute au moins un produit.";
-    resultEl.className = "result-badge bad";
-    return;
-  }
-  const nouvelOnglet = window.open("", "_blank");
-  resultEl.textContent = "Génération du PDF…";
-  resultEl.className = "result-badge";
-  try {
-    const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Non Alimentaire", type: "non_alimentaire", personne: PRENOM });
     resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
     if (nouvelOnglet) nouvelOnglet.location.href = data.url;
