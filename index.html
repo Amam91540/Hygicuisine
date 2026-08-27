@@ -158,15 +158,37 @@
       </div>
 
       <div id="sub-nonalim" class="subpanel">
-        <form id="form-nonalim" class="card-form">
-          <div id="nonalim-lignes"></div>
-          <button type="button" id="nonalim-ajouter-ligne" class="btn-secondary">+ Ajouter un produit</button>
-          <label>Envoyer à (e-mail)
-            <input type="email" id="nonalim-email" required placeholder="ex. direction@monetablissement.fr">
-          </label>
-          <button type="submit" class="btn-primary">Envoyer le Stock Non Alimentaire</button>
-          <button type="button" id="nonalim-pdf-btn" class="btn-secondary">📄 Télécharger en PDF</button>
-        </form>
+        <div class="nonalim-header">
+          <div class="nonalim-recherche-zone">
+            <input type="text" id="nonalim-recherche" placeholder="🔍 Rechercher un produit à ajouter à ton stock…" autocomplete="off">
+            <div id="nonalim-resultats" class="nonalim-resultats hidden"></div>
+          </div>
+          <button type="button" id="nonalim-deverrouiller-btn" class="btn-secondary" title="Déverrouiller les noms pour les modifier">✏️</button>
+        </div>
+
+        <div class="table-wrap">
+          <table class="nonalim-stock-table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th class="nonalim-col-ajout">Ajouter</th>
+                <th class="nonalim-col-retrait">Retirer</th>
+                <th>Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="nonalim-stock-corps"></tbody>
+          </table>
+        </div>
+
+        <div class="nonalim-recap-zone">
+          <p class="dashboard-note" style="margin:0 0 10px">Récapitulatif par période — quantités ajoutées et retirées pour chaque produit du stock.</p>
+          <div class="nonalim-recap-dates">
+            <label>Du <input type="date" id="nonalim-recap-debut"></label>
+            <label>Au <input type="date" id="nonalim-recap-fin"></label>
+          </div>
+          <button type="button" id="nonalim-recap-btn" class="btn-primary">📄 Générer le PDF récapitulatif</button>
+        </div>
       </div>
 
       <div id="stocks-result" class="result-badge"></div>
