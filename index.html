@@ -52,21 +52,17 @@
     <section id="section-dashboard" class="panel active">
       <h2 class="panel-title">Aujourd'hui</h2>
       <div class="quick-grid">
-        <button class="quick-card" data-goto="enr" data-scroll="enr-section-plats">
+        <button class="quick-card" data-goto="enr">
           <span class="quick-ico">▧</span>
-          <span class="quick-label">Plats — températures &amp; classement chaud/froid</span>
-        </button>
-        <button class="quick-card" data-goto="enr" data-scroll="enr-section-enceintes">
-          <span class="quick-ico">▣</span>
-          <span class="quick-label">Enceintes réfrigérées &amp; distribution</span>
-        </button>
-        <button class="quick-card" data-goto="tracabilite">
-          <span class="quick-ico">◈</span>
-          <span class="quick-label">Traçabilité — photos par plat</span>
+          <span class="quick-label">Feuille ENR</span>
         </button>
         <button class="quick-card" data-goto="stocks">
           <span class="quick-ico">▤</span>
-          <span class="quick-label">Bon de livraison / Stocks</span>
+          <span class="quick-label">Stock</span>
+        </button>
+        <button class="quick-card" data-goto="menu">
+          <span class="quick-ico">▦</span>
+          <span class="quick-label">Menu</span>
         </button>
       </div>
       <p class="dashboard-note">Les photos de traçabilité sont conservées automatiquement pendant 1 an, puis supprimées.</p>
@@ -151,7 +147,7 @@
           <div id="etat-lignes"></div>
           <button type="button" id="etat-ajouter-ligne" class="btn-secondary">+ Ajouter un produit</button>
           <label>Envoyer à (e-mail)
-            <input type="email" id="etat-email" required placeholder="ex. direction@monetablissement.fr">
+            <input type="email" id="etat-email" required value="ucp.bretigny.sur.orge@gmail.com" placeholder="ex. direction@monetablissement.fr">
           </label>
           <button type="submit" class="btn-primary">Envoyer le Stock Alimentaire</button>
           <button type="button" id="etat-pdf-btn" class="btn-secondary">📄 Télécharger en PDF</button>
