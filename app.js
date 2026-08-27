@@ -137,11 +137,13 @@ function creerLigneProduitAlimentaire() {
   div.className = "ligne-produit ligne-produit-alimentaire";
   div.innerHTML = `
     <input type="text" placeholder="Produit" class="ligne-produit-nom" list="produits-connus-datalist">
-    <input type="text" placeholder="Qté" class="ligne-produit-qte">
-    <select class="ligne-produit-categorie">
-      ${CATEGORIES_STOCK_ALIMENTAIRE.map(c => `<option value="${c}">${c}</option>`).join("")}
-    </select>
-    <input type="text" placeholder="DLC/DDM/DLUO" class="ligne-produit-dlc" title="DLC / DDM / DLUO">`;
+    <div class="ligne-produit-alimentaire-ligne2">
+      <input type="text" placeholder="Qté" class="ligne-produit-qte">
+      <input type="text" placeholder="DLC/DDM/DLUO" class="ligne-produit-dlc" title="DLC / DDM / DLUO">
+      <select class="ligne-produit-categorie">
+        ${CATEGORIES_STOCK_ALIMENTAIRE.map(c => `<option value="${c}">${c}</option>`).join("")}
+      </select>
+    </div>`;
   return div;
 }
 
