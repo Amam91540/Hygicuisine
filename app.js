@@ -1723,6 +1723,10 @@ async function chargerHistorique(onglet) {
     await chargerHistoriqueTracabilite(wrap);
     return;
   }
+  if (onglet === "temp_enceintes") {
+    await chargerHistoriqueEnceintes(wrap);
+    return;
+  }
 
   try {
     const data = await apiCall("getHistorique", { onglet, limite: 50 });
@@ -1899,3 +1903,62 @@ document.getElementById("hist-photo-remplacement").addEventListener("change", as
     lienARemplacerHistorique = null;
   }
 });
+
+// ================= HISTORIQUE — ENCEINTES (en-tête groupé Matin / Soir) =================
+async function chargerHistoriqueEnceintes(wrap) {
+  try {
+    const data = await apiCall("getHistorique", { onglet: "temp_enceintes", limite: 50 });
+    const lignes = data.lignes || [];
+    if (lignes.length === 0) {
+      wrap.innerHTML = '<p class="table-empty">Aucune donnée pour le moment.</p>';
+      return;
+    }
+    const entetes = data.entetes;
+    // Positions réelles dans la feuille (voir ENTETES_TEMP_ENCEINTES côté serveur).
+    const idx = {
+      date: entetes.indexOf("Date"), enceinte: entetes.indexOf("Enceinte"), type: entetes.indexOf("Type"),
+      heureMatin: entetes.indexOf("Heure Matin"), tempMatin: entetes.indexOf("Temp. Matin"), confMatin: entetes.indexOf("Conforme Matin"),
+      heureSoir: entetes.indexOf("Heure Soir"), tempSoir: entetes.indexOf("Temp. Soir"), confSoir: entetes.indexOf("Conforme Soir"),
+      remarque: entetes.indexOf("Remarque")
+    };
+
+    let html = `<table class="hist-enceintes-table"><thead>
+      <tr>
+        <th rowspan="2">Date</th><th rowspan="2">Enceinte</th><th rowspan="2">Type</th>
+        <th colspan="3" class="hist-enceintes-groupe-matin">Matin</th>
+        <th colspan="3" class="hist-enceintes-groupe-soir">Soir</th>
+        <th rowspan="2">Remarque</th><th rowspan="2"></th>
+      </tr>
+      <tr>
+        <th class="hist-enceintes-groupe-matin">Heure</th><th class="hist-enceintes-groupe-matin">Température</th><th class="hist-enceintes-groupe-matin">Conforme</th>
+        <th class="hist-enceintes-groupe-soir">Heure</th><th class="hist-enceintes-groupe-soir">Température</th><th class="hist-enceintes-groupe-soir">Conforme</th>
+      </tr>
+    </thead><tbody>`;
+
+    lignes.forEach((row, rowIdx) => {
+      const celluleConforme = (val, cls) => {
+        const mauvais = String(val).includes("NON");
+        return `<td class="${mauvais ? "cell-bad" : (val ? "cell-ok" : "")} ${cls}">${val || ""}</td>`;
+      };
+      html += `<tr>
+        <td>${row[idx.date] || ""}</td><td>${row[idx.enceinte] || ""}</td><td>${row[idx.type] || ""}</td>
+        <td class="hist-enceintes-groupe-matin">${row[idx.heureMatin] || ""}</td>
+        <td class="hist-enceintes-groupe-matin">${row[idx.tempMatin] !== "" ? row[idx.tempMatin] + "°C" : ""}</td>
+        ${celluleConforme(row[idx.confMatin], "hist-enceintes-groupe-matin")}
+        <td class="hist-enceintes-groupe-soir">${row[idx.heureSoir] || ""}</td>
+        <td class="hist-enceintes-groupe-soir">${row[idx.tempSoir] !== "" ? row[idx.tempSoir] + "°C" : ""}</td>
+        ${celluleConforme(row[idx.confSoir], "hist-enceintes-groupe-soir")}
+        <td>${row[idx.remarque] || ""}</td>
+        <td><button type="button" class="hist-supprimer-btn" data-row="${rowIdx}">🗑</button></td>
+      </tr>`;
+    });
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+
+    wrap.querySelectorAll(".hist-supprimer-btn").forEach(btn => {
+      btn.addEventListener("click", () => supprimerLigneHistorique("temp_enceintes", lignes[parseInt(btn.dataset.row, 10)]));
+    });
+  } catch (err) {
+    wrap.innerHTML = `<p class="table-empty">Erreur de chargement : ${err.message}</p>`;
+  }
+}
