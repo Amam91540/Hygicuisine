@@ -132,40 +132,83 @@ document.querySelectorAll('#section-stocks .subtab-btn').forEach(btn => {
 const CATEGORIES_STOCK_ALIMENTAIRE = ["Assaisonnement", "Entrée", "Plat", "Fromage", "Dessert"];
 
 // Stock Alimentaire : Produit (avec autocomplétion) + Quantité + Catégorie (ordre du PDF).
-function creerLigneProduitAlimentaire() {
+function creerLigneProduitAlimentaire(donnees) {
   const div = document.createElement("div");
   div.className = "ligne-produit ligne-produit-alimentaire";
   div.innerHTML = `
-    <input type="text" placeholder="Produit" class="ligne-produit-nom" list="produits-connus-datalist">
+    <input type="text" placeholder="Produit" class="ligne-produit-nom" list="produits-connus-datalist" value="${donnees ? donnees.produit : ""}">
     <div class="ligne-produit-alimentaire-ligne2">
-      <input type="text" placeholder="Qté" class="ligne-produit-qte">
-      <input type="text" placeholder="DLC/DDM/DLUO" class="ligne-produit-dlc" title="DLC / DDM / DLUO">
+      <input type="text" placeholder="Qté" class="ligne-produit-qte" value="${donnees ? donnees.quantite : ""}">
+      <input type="text" placeholder="DLC/DDM/DLUO" class="ligne-produit-dlc" title="DLC / DDM / DLUO" value="${donnees ? (donnees.dlc || "") : ""}">
       <select class="ligne-produit-categorie">
-        ${CATEGORIES_STOCK_ALIMENTAIRE.map(c => `<option value="${c}">${c}</option>`).join("")}
+        ${CATEGORIES_STOCK_ALIMENTAIRE.map(c => `<option value="${c}"${donnees && donnees.categorie === c ? " selected" : ""}>${c}</option>`).join("")}
       </select>
+      <button type="button" class="ligne-produit-sortir" title="Sortir une quantité du stock">➖ Sortir</button>
     </div>`;
+  div.querySelector(".ligne-produit-sortir").addEventListener("click", () => sortirDuStock(div, "alimentaire"));
   return div;
 }
 
 // Stock Non Alimentaire : Produit (avec autocomplétion) + Quantité + Unité (inchangé).
-function creerLigneProduit() {
+function creerLigneProduit(donnees) {
   const div = document.createElement("div");
   div.className = "ligne-produit";
   div.innerHTML = `
-    <input type="text" placeholder="Produit" class="ligne-produit-nom" list="produits-connus-datalist">
-    <input type="text" placeholder="Qté" class="ligne-produit-qte">
-    <input type="text" placeholder="Unité" class="ligne-produit-unite">`;
+    <input type="text" placeholder="Produit" class="ligne-produit-nom" list="produits-connus-datalist" value="${donnees ? donnees.produit : ""}">
+    <input type="text" placeholder="Qté" class="ligne-produit-qte" value="${donnees ? donnees.quantite : ""}">
+    <input type="text" placeholder="Unité" class="ligne-produit-unite" value="${donnees ? (donnees.unite || "") : ""}">
+    <button type="button" class="ligne-produit-sortir" title="Sortir une quantité du stock">➖</button>`;
+  div.querySelector(".ligne-produit-sortir").addEventListener("click", () => sortirDuStock(div, "non_alimentaire"));
   return div;
 }
+
+// Retire une quantité du stock d'un produit (sortie), sans attendre une nouvelle
+// prise d'inventaire complète : met à jour tout de suite le champ Qté affiché,
+// et enregistre la déduction côté serveur pour que ça reste vrai la prochaine fois.
+async function sortirDuStock(div, type) {
+  const champNom = div.querySelector(".ligne-produit-nom");
+  const champQte = div.querySelector(".ligne-produit-qte");
+  const produit = champNom.value.trim();
+  if (!produit) { toast("Indique d'abord le nom du produit.", true); return; }
+  const quantiteSortie = prompt(`Quantité à sortir du stock pour "${produit}" :`);
+  if (!quantiteSortie || quantiteSortie.trim() === "") return;
+  try {
+    const res = await apiCall("sortirProduitStock", { type, produit, quantiteSortie: quantiteSortie.trim() });
+    if (res.ok) {
+      champQte.value = res.nouvelleQuantite;
+      toast(`${produit} : nouvelle quantité ${res.nouvelleQuantite}`);
+    } else {
+      toast("Erreur : " + (res.error || "sortie impossible"), true);
+    }
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  }
+}
+
+// Charge le dernier stock connu pour ce type et pré-remplit les lignes — évite de
+// tout ressaisir si le stock n'a pas bougé depuis le dernier envoi.
+async function chargerStockActuel(type, containerId, fabriqueLigne) {
+  const container = document.getElementById(containerId);
+  try {
+    const data = await apiCall("getStockActuel", { type });
+    if (data.lignes && data.lignes.length > 0) {
+      container.innerHTML = "";
+      data.lignes.forEach(l => container.appendChild(fabriqueLigne(l)));
+      return;
+    }
+  } catch (e) { /* si ça échoue, on retombe sur une ligne vide ci-dessous */ }
+  container.appendChild(fabriqueLigne());
+}
+
 document.getElementById("etat-ajouter-ligne").addEventListener("click", () => {
   document.getElementById("etat-lignes").appendChild(creerLigneProduitAlimentaire());
 });
-document.getElementById("etat-lignes").appendChild(creerLigneProduitAlimentaire());
+chargerStockActuel("alimentaire", "etat-lignes", creerLigneProduitAlimentaire);
 
 document.getElementById("nonalim-ajouter-ligne").addEventListener("click", () => {
   document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
 });
-document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
+chargerStockActuel("non_alimentaire", "nonalim-lignes", creerLigneProduit);
 
 function lireLignes(containerId) {
   const container = document.getElementById(containerId);
@@ -363,15 +406,12 @@ document.getElementById("form-etat").addEventListener("submit", async (e) => {
   resultEl.className = "result-badge";
   try {
     await apiCall("sendEtatStocks", {
-      lignes, titre: "Stock Alimentaire",
+      lignes, titre: "Stock Alimentaire", type: "alimentaire",
       destinataire: document.getElementById("etat-email").value,
       personne: PRENOM
     });
     resultEl.textContent = "✓ Stock Alimentaire envoyé par e-mail.";
     resultEl.classList.add("ok");
-    e.target.reset();
-    document.getElementById("etat-lignes").innerHTML = "";
-    document.getElementById("etat-lignes").appendChild(creerLigneProduitAlimentaire());
     chargerProduitsConnus();
     toast("Stock Alimentaire envoyé");
   } catch (err) {
@@ -394,15 +434,12 @@ document.getElementById("form-nonalim").addEventListener("submit", async (e) => 
   resultEl.className = "result-badge";
   try {
     await apiCall("sendEtatStocks", {
-      lignes, titre: "Stock Non Alimentaire",
+      lignes, titre: "Stock Non Alimentaire", type: "non_alimentaire",
       destinataire: document.getElementById("nonalim-email").value,
       personne: PRENOM
     });
     resultEl.textContent = "✓ Stock Non Alimentaire envoyé par e-mail.";
     resultEl.classList.add("ok");
-    e.target.reset();
-    document.getElementById("nonalim-lignes").innerHTML = "";
-    document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
     chargerProduitsConnus();
     toast("Stock Non Alimentaire envoyé");
   } catch (err) {
@@ -458,7 +495,7 @@ document.getElementById("etat-pdf-btn").addEventListener("click", async () => {
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
-    const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Alimentaire", personne: PRENOM });
+    const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Alimentaire", type: "alimentaire", personne: PRENOM });
     resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
     if (nouvelOnglet) nouvelOnglet.location.href = data.url;
@@ -482,7 +519,7 @@ document.getElementById("nonalim-pdf-btn").addEventListener("click", async () =>
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
-    const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Non Alimentaire", personne: PRENOM });
+    const data = await apiCall("genererPdfEtatStocks", { lignes, titre: "Stock Non Alimentaire", type: "non_alimentaire", personne: PRENOM });
     resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
     if (nouvelOnglet) nouvelOnglet.location.href = data.url;
