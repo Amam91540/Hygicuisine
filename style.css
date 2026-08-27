@@ -181,9 +181,20 @@ body{
 .ligne-produit{
   display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;
 }
-.ligne-produit-alimentaire{grid-template-columns:1.6fr 0.6fr 1fr 1.5fr}
-@media (max-width:400px){
-  .ligne-produit-alimentaire{grid-template-columns:1fr 1fr;row-gap:6px}
+/* Stock Alimentaire : Produit sur sa propre ligne, puis Qté / DLC / Catégorie en dessous. */
+.ligne-produit-alimentaire{
+  display:flex;flex-direction:column;gap:8px;
+}
+.ligne-produit-alimentaire-ligne2{
+  display:grid;grid-template-columns:0.7fr 1.3fr 1.3fr;gap:8px;
+}
+.ligne-produit-alimentaire-ligne2 input,
+.ligne-produit-alimentaire-ligne2 select{
+  min-width:0; /* sans ça, les champs texte refusent de rétrécir sous leur largeur "naturelle" */
+  width:100%;
+}
+@media (max-width:360px){
+  .ligne-produit-alimentaire-ligne2{grid-template-columns:1fr 1fr;row-gap:6px}
 }
 .ligne-produit input{
   border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:var(--body);
