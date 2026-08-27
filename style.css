@@ -54,6 +54,8 @@ body{
   font-family:var(--mono);font-weight:600;font-size:18px;
   box-shadow:0 0 0 6px rgba(15,107,92,0.12);
 }
+.lock-logo{display:block;max-width:180px;height:auto;margin:0 auto 18px}
+.lock-etablissement{font-size:12px;color:var(--ink-soft);margin-top:-6px;margin-bottom:18px}
 .lock-card h1{font-family:var(--display);font-size:24px;margin:0 0 4px}
 .lock-sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px}
 .lock-card input{
@@ -72,6 +74,7 @@ body{
   position:sticky;top:0;z-index:10;
 }
 .brand{display:flex;align-items:center;gap:10px}
+.brand-logo{height:32px;width:auto;flex-shrink:0}
 .brand-mark{
   width:34px;height:34px;border-radius:9px;background:var(--teal);color:#fff;
   display:flex;align-items:center;justify-content:center;
