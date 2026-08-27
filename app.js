@@ -1121,6 +1121,33 @@ let dernieresDonneesENR = null; // dernier chargement complet de la Feuille ENR,
 
 // Liste les éléments manquants avant de valider la journée : températures non saisies
 // (hors "petits pains LR", jamais mesurés) et photos absentes sur un plat non-UCP.
+// Affiche une fenêtre listant les éléments manquants, avec un choix explicite entre
+// "Fermer" (annule, rien n'est généré) et "Forcer la génération" (continue quand même).
+function demanderConfirmationManquants(manquants) {
+  return new Promise(resolve => {
+    const modal = document.getElementById("verification-modal");
+    const liste = document.getElementById("verification-modal-liste");
+    liste.innerHTML = manquants.map(m => `<li>${m}</li>`).join("");
+    modal.classList.remove("hidden");
+
+    const btnFermer = document.getElementById("verification-modal-fermer");
+    const btnFermerBas = document.getElementById("verification-modal-fermer-bas");
+    const btnForcer = document.getElementById("verification-modal-forcer");
+
+    const nettoyer = () => {
+      modal.classList.add("hidden");
+      btnFermer.removeEventListener("click", surFermer);
+      btnFermerBas.removeEventListener("click", surFermer);
+      btnForcer.removeEventListener("click", surForcer);
+    };
+    const surFermer = () => { nettoyer(); resolve(false); };
+    const surForcer = () => { nettoyer(); resolve(true); };
+    btnFermer.addEventListener("click", surFermer);
+    btnFermerBas.addEventListener("click", surFermer);
+    btnForcer.addEventListener("click", surForcer);
+  });
+}
+
 function calculerElementsManquantsENR(donnees, statutPhotos) {
   const manque = [];
   ENCEINTES_ENR.forEach(e => {
@@ -1577,31 +1604,40 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
   }
   const { semaine, jour } = joursDisponibles[enrIndexActuel];
   const dateJour = calculerDateJour(semaine, jour);
-  const nouvelOnglet = window.open("", "_blank");
+  const dateStr = dateJour ? Utilities_formatDateFr(dateJour) : "";
 
-  // Vérification avant validation : avertit si des éléments sont manquants, sans bloquer.
-  if (dernieresDonneesENR && dernieresDonneesENR.semaine === semaine && dernieresDonneesENR.jour === jour) {
-    let statutPhotos = { platsAvecPhoto: [], indexUCP: {} };
-    try { statutPhotos = await apiCall("getStatutPhotosJour", { semaine, jour }); } catch (e) { /* on continue sans bloquer */ }
-    const manquants = calculerElementsManquantsENR(dernieresDonneesENR, statutPhotos);
-    if (manquants.length > 0) {
-      const apercu = manquants.slice(0, 15).map(m => "• " + m).join("\n")
-        + (manquants.length > 15 ? `\n… et ${manquants.length - 15} autre(s)` : "");
-      const continuer = confirm(`Éléments manquants avant de valider la journée :\n\n${apercu}\n\nGénérer quand même le PDF ?`);
-      if (!continuer) {
-        if (nouvelOnglet) nouvelOnglet.close();
-        resultEl.textContent = "Validation annulée — complète les éléments manquants.";
-        resultEl.className = "result-badge bad";
-        return;
-      }
+  // Vérification avant validation : on relit les données fraîches du serveur (pas
+  // celles en mémoire, qui peuvent dater d'avant les dernières saisies), pour ne
+  // jamais signaler à tort un élément déjà rempli.
+  resultEl.textContent = "Vérification avant validation…";
+  resultEl.className = "result-badge";
+  let donneesFraiches, statutPhotos = { platsAvecPhoto: [], indexUCP: {} };
+  try {
+    donneesFraiches = await apiCall("getFeuilleENRComplete", { semaine, jour, date: dateStr });
+    statutPhotos = await apiCall("getStatutPhotosJour", { semaine, jour });
+  } catch (e) {
+    resultEl.textContent = "Erreur : " + e.message;
+    resultEl.classList.add("bad");
+    return;
+  }
+  const manquants = calculerElementsManquantsENR(donneesFraiches, statutPhotos);
+  if (manquants.length > 0) {
+    const continuer = await demanderConfirmationManquants(manquants);
+    if (!continuer) {
+      resultEl.textContent = "Validation annulée — complète les éléments manquants.";
+      resultEl.className = "result-badge bad";
+      return;
     }
   }
 
+  // Ouvre l'onglet tout de suite au clic sur "Forcer"/quand tout est complet, sinon
+  // le navigateur bloque l'ouverture comme un pop-up une fois passé par un await.
+  const nouvelOnglet = window.open("", "_blank");
   resultEl.textContent = "Génération du PDF…";
   resultEl.className = "result-badge";
   try {
     const data = await apiCall("genererPdfENR", {
-      semaine, jour, date: dateJour ? Utilities_formatDateFr(dateJour) : "", personne: PRENOM
+      semaine, jour, date: dateStr, personne: PRENOM
     });
     resultEl.textContent = "✓ PDF prêt.";
     resultEl.classList.add("ok");
@@ -1638,7 +1674,7 @@ document.getElementById("hist-filtre-reset").addEventListener("click", () => {
 
 // Colonnes à masquer par onglet (les données restent stockées, juste pas affichées).
 const COLONNES_MASQUEES_HISTORIQUE = {
-  feuille_enr: ["Date génération", "Heure génération", "Semaine"],
+  feuille_enr: ["Date du menu", "Date génération", "Heure génération", "Semaine"],
   temp_enceintes: ["Heure Matin", "Heure Soir", "Semaine", "Jour"]
 };
 
