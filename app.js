@@ -129,19 +129,35 @@ document.querySelectorAll('#section-stocks .subtab-btn').forEach(btn => {
 });
 
 // ================= LIGNES PRODUITS DYNAMIQUES =================
+const CATEGORIES_STOCK_ALIMENTAIRE = ["Assaisonnement", "Entrée", "Plat", "Fromage", "Dessert"];
+
+// Stock Alimentaire : Produit (avec autocomplétion) + Quantité + Catégorie (ordre du PDF).
+function creerLigneProduitAlimentaire() {
+  const div = document.createElement("div");
+  div.className = "ligne-produit ligne-produit-alimentaire";
+  div.innerHTML = `
+    <input type="text" placeholder="Produit" class="ligne-produit-nom" list="produits-connus-datalist">
+    <input type="text" placeholder="Qté" class="ligne-produit-qte">
+    <select class="ligne-produit-categorie">
+      ${CATEGORIES_STOCK_ALIMENTAIRE.map(c => `<option value="${c}">${c}</option>`).join("")}
+    </select>`;
+  return div;
+}
+
+// Stock Non Alimentaire : Produit (avec autocomplétion) + Quantité + Unité (inchangé).
 function creerLigneProduit() {
   const div = document.createElement("div");
   div.className = "ligne-produit";
   div.innerHTML = `
-    <input type="text" placeholder="Produit" class="ligne-produit-nom">
+    <input type="text" placeholder="Produit" class="ligne-produit-nom" list="produits-connus-datalist">
     <input type="text" placeholder="Qté" class="ligne-produit-qte">
     <input type="text" placeholder="Unité" class="ligne-produit-unite">`;
   return div;
 }
 document.getElementById("etat-ajouter-ligne").addEventListener("click", () => {
-  document.getElementById("etat-lignes").appendChild(creerLigneProduit());
+  document.getElementById("etat-lignes").appendChild(creerLigneProduitAlimentaire());
 });
-document.getElementById("etat-lignes").appendChild(creerLigneProduit());
+document.getElementById("etat-lignes").appendChild(creerLigneProduitAlimentaire());
 
 document.getElementById("nonalim-ajouter-ligne").addEventListener("click", () => {
   document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
@@ -154,11 +170,27 @@ function lireLignes(containerId) {
   container.querySelectorAll(".ligne-produit").forEach(div => {
     const produit = div.querySelector(".ligne-produit-nom").value.trim();
     const quantite = div.querySelector(".ligne-produit-qte").value.trim();
-    const unite = div.querySelector(".ligne-produit-unite").value.trim();
-    if (produit) lignes.push({ produit, quantite, unite });
+    if (!produit) return;
+    const champCategorie = div.querySelector(".ligne-produit-categorie");
+    if (champCategorie) {
+      lignes.push({ produit, quantite, categorie: champCategorie.value });
+    } else {
+      const unite = div.querySelector(".ligne-produit-unite").value.trim();
+      lignes.push({ produit, quantite, unite });
+    }
   });
   return lignes;
 }
+
+// -- Mémorisation des produits déjà saisis, pour l'autocomplétion (liste <datalist>) --
+async function chargerProduitsConnus() {
+  try {
+    const data = await apiCall("getProduitsConnus", {});
+    const datalist = document.getElementById("produits-connus-datalist");
+    datalist.innerHTML = (data.produits || []).map(p => `<option value="${p}"></option>`).join("");
+  } catch (e) { /* l'autocomplétion reste juste vide si ça échoue */ }
+}
+chargerProduitsConnus();
 
 // ---- Liste des produits pour le Bon de livraison (façon fiche de commande) ----
 // ---- Signature tactile (Bon de livraison) ----
@@ -334,7 +366,8 @@ document.getElementById("form-etat").addEventListener("submit", async (e) => {
     resultEl.classList.add("ok");
     e.target.reset();
     document.getElementById("etat-lignes").innerHTML = "";
-    document.getElementById("etat-lignes").appendChild(creerLigneProduit());
+    document.getElementById("etat-lignes").appendChild(creerLigneProduitAlimentaire());
+    chargerProduitsConnus();
     toast("Stock Alimentaire envoyé");
   } catch (err) {
     resultEl.textContent = "Erreur : " + err.message;
@@ -365,6 +398,7 @@ document.getElementById("form-nonalim").addEventListener("submit", async (e) => 
     e.target.reset();
     document.getElementById("nonalim-lignes").innerHTML = "";
     document.getElementById("nonalim-lignes").appendChild(creerLigneProduit());
+    chargerProduitsConnus();
     toast("Stock Non Alimentaire envoyé");
   } catch (err) {
     resultEl.textContent = "Erreur : " + err.message;
