@@ -259,6 +259,17 @@
 
 <div id="toast" class="toast hidden"></div>
 
+<div id="verification-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <button type="button" id="verification-modal-fermer" class="modal-close" aria-label="Fermer">✕</button>
+    <h3 class="modal-titre">Éléments manquants</h3>
+    <p class="modal-souscat-info">Ces éléments ne sont pas encore renseignés pour cette journée :</p>
+    <ul id="verification-modal-liste" class="verification-liste"></ul>
+    <button type="button" id="verification-modal-fermer-bas" class="btn-secondary">Fermer</button>
+    <button type="button" id="verification-modal-forcer" class="btn-primary">Forcer la génération du PDF quand même</button>
+  </div>
+</div>
+
 <div id="plat-modal" class="modal-overlay hidden">
   <div class="modal-card">
     <button id="plat-modal-close" class="modal-close" aria-label="Fermer">✕</button>
