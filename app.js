@@ -1269,7 +1269,9 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   ENCEINTES_ENR.forEach(e => {
     const r = releveEnceintes[e.app] || {};
     html += `<div class="enr-enceinte-card">
-      <div class="enr-enceinte-nom">${e.label}</div>
+      <div class="enr-enceinte-nom">${e.label}
+        <button type="button" class="enr-enceinte-remarque-btn" data-enceinte="${e.app}" title="Ajouter/modifier une remarque">📝${r.remarque ? " ✓" : ""}</button>
+      </div>
       <div class="enr-enceinte-champs">
         <div class="enr-enceinte-champ">
           <label>Matin</label>
@@ -1368,6 +1370,21 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
         } else {
           toast("Erreur : " + (res.error || "renommage impossible"), true);
         }
+      } catch (err) { toast("Erreur : " + err.message, true); }
+    });
+  });
+
+  // -- Listeners remarque par enceinte --
+  cont.querySelectorAll(".enr-enceinte-remarque-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const enceinte = btn.dataset.enceinte;
+      const actuelle = (dernieresDonneesENR.releveEnceintes[enceinte] || {}).remarque || "";
+      const remarque = prompt(`Remarque pour "${enceinte}" :`, actuelle);
+      if (remarque === null) return; // annulé
+      try {
+        await apiCall("ajouterRemarqueEnceinte", { enceinte, remarque: remarque.trim(), semaine, jour, personne: PRENOM });
+        toast("Remarque enregistrée");
+        construireFeuilleENR(semaine, jour, dateJour);
       } catch (err) { toast("Erreur : " + err.message, true); }
     });
   });
@@ -1690,7 +1707,7 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
 // ================= HISTORIQUE =================
 let currentHistTab = "feuille_enr";
 
-const ONGLETS_AVEC_FILTRE_DATE = ["feuille_enr", "tracabilite_photos"];
+const ONGLETS_AVEC_FILTRE_DATE = ["feuille_enr", "tracabilite_photos", "temp_enceintes"];
 
 document.querySelectorAll('#hist-tabs .subtab-btn').forEach(btn => {
   btn.addEventListener("click", () => {
@@ -1908,12 +1925,28 @@ document.getElementById("hist-photo-remplacement").addEventListener("change", as
 async function chargerHistoriqueEnceintes(wrap) {
   try {
     const data = await apiCall("getHistorique", { onglet: "temp_enceintes", limite: 50 });
-    const lignes = data.lignes || [];
+    let lignes = data.lignes || [];
+    const entetes = data.entetes;
+    const idxDate = entetes.indexOf("Date");
+
+    const dateFiltre = document.getElementById("hist-filtre-date").value; // yyyy-mm-dd
+    if (dateFiltre && idxDate !== -1) {
+      const [a, m, j] = dateFiltre.split("-");
+      const jSansZero = String(parseInt(j, 10));
+      const mSansZero = String(parseInt(m, 10));
+      lignes = lignes.filter(l => {
+        const partiesDate = String(l[idxDate] || "").split("/");
+        return partiesDate.length === 3
+          && String(parseInt(partiesDate[0], 10)) === jSansZero
+          && String(parseInt(partiesDate[1], 10)) === mSansZero
+          && partiesDate[2] === a;
+      });
+    }
+
     if (lignes.length === 0) {
       wrap.innerHTML = '<p class="table-empty">Aucune donnée pour le moment.</p>';
       return;
     }
-    const entetes = data.entetes;
     // Positions réelles dans la feuille (voir ENTETES_TEMP_ENCEINTES côté serveur).
     const idx = {
       date: entetes.indexOf("Date"), enceinte: entetes.indexOf("Enceinte"), type: entetes.indexOf("Type"),
