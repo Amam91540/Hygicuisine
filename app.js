@@ -141,7 +141,7 @@ function creerLigneProduitAlimentaire() {
     <select class="ligne-produit-categorie">
       ${CATEGORIES_STOCK_ALIMENTAIRE.map(c => `<option value="${c}">${c}</option>`).join("")}
     </select>
-    <input type="date" placeholder="DLC/DDM/DLUO" class="ligne-produit-dlc" title="DLC / DDM / DLUO">`;
+    <input type="text" placeholder="DLC/DDM/DLUO" class="ligne-produit-dlc" title="DLC / DDM / DLUO">`;
   return div;
 }
 
@@ -175,8 +175,7 @@ function lireLignes(containerId) {
     const champCategorie = div.querySelector(".ligne-produit-categorie");
     if (champCategorie) {
       const champDlc = div.querySelector(".ligne-produit-dlc");
-      const dlcIso = champDlc ? champDlc.value : "";
-      const dlc = dlcIso ? convertirDateIsoEnFr(dlcIso) : "";
+      const dlc = champDlc ? champDlc.value.trim() : "";
       lignes.push({ produit, quantite, categorie: champCategorie.value, dlc });
     } else {
       const unite = div.querySelector(".ligne-produit-unite").value.trim();
