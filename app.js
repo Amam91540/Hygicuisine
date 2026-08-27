@@ -61,6 +61,11 @@ document.getElementById("btn-entrer").addEventListener("click", async () => {
     document.getElementById("user-name-display").textContent = prenom;
     document.getElementById("lock-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
+    // Ces chargements ont besoin du code d'accès déjà validé (CODE_ACCES) — on les
+    // déclenche donc ici, juste après connexion, plutôt qu'au chargement de la page.
+    chargerStockActuel("alimentaire", "etat-lignes", creerLigneProduitAlimentaire);
+    chargerProduitsConnus();
+    initialiserStockNonAlim();
   } catch (e) {
     errEl.textContent = "Connexion impossible : " + e.message;
   }
@@ -203,7 +208,6 @@ async function chargerStockActuel(type, containerId, fabriqueLigne) {
 document.getElementById("etat-ajouter-ligne").addEventListener("click", () => {
   document.getElementById("etat-lignes").appendChild(creerLigneProduitAlimentaire());
 });
-chargerStockActuel("alimentaire", "etat-lignes", creerLigneProduitAlimentaire);
 
 function lireLignes(containerId) {
   const container = document.getElementById(containerId);
@@ -233,7 +237,6 @@ async function chargerProduitsConnus() {
     datalist.innerHTML = (data.produits || []).map(p => `<option value="${p}"></option>`).join("");
   } catch (e) { /* l'autocomplétion reste juste vide si ça échoue */ }
 }
-chargerProduitsConnus();
 
 // ---- Liste des produits pour le Bon de livraison (façon fiche de commande) ----
 // ---- Signature tactile (Bon de livraison) ----
@@ -299,7 +302,6 @@ async function initialiserStockNonAlim() {
   } catch (e) { /* la recherche restera juste vide si ça échoue */ }
   await rafraichirTableauStockNonAlim();
 }
-initialiserStockNonAlim();
 
 async function rafraichirTableauStockNonAlim() {
   const corps = document.getElementById("nonalim-stock-corps");
