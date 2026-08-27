@@ -181,7 +181,10 @@ body{
 .ligne-produit{
   display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:8px;
 }
-.ligne-produit-alimentaire{grid-template-columns:2fr 1fr 1fr 1.2fr}
+.ligne-produit-alimentaire{grid-template-columns:1.6fr 0.6fr 1fr 1.5fr}
+@media (max-width:400px){
+  .ligne-produit-alimentaire{grid-template-columns:1fr 1fr;row-gap:6px}
+}
 .ligne-produit input{
   border:1px solid var(--line);border-radius:8px;padding:10px;font-size:14px;font-family:var(--body);
 }
