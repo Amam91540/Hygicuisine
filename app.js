@@ -34,6 +34,22 @@ function temperatureSaisie(valeurBrute) {
   return (valeurBrute || "").replace(",", ".").trim();
 }
 
+// Bascule le signe (+/-) d'un champ de température au clic — nécessaire car certains
+// claviers virtuels (ex. Firefox tablette en mode décimal) n'affichent pas la touche
+// "-", pourtant indispensable pour les produits surgelés.
+function basculerSigneTemperature(input) {
+  input.value = input.value.startsWith("-") ? input.value.slice(1) : "-" + (input.value || "");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+  input.focus();
+}
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".btn-signe-temp");
+  if (!btn) return;
+  const input = btn.previousElementSibling;
+  if (input) basculerSigneTemperature(input);
+});
+
 // ================= CONNEXION =================
 document.getElementById("btn-entrer").addEventListener("click", async () => {
   const code = document.getElementById("code-acces").value.trim();
@@ -1600,7 +1616,8 @@ function celluleEtapePlatENR(plat, type, etape, info, avecHeure) {
     ? (horsNorme ? `⚠ enregistré` : `✓ enregistré`)
     : "";
   let html = `<input type="text" inputmode="decimal" class="enr-mini-input enr-plat-temp-input${horsNorme ? " enr-alerte" : ""}"
-    data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${valeur}" placeholder="°C">`;
+    data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${valeur}" placeholder="°C">
+    <button type="button" class="btn-signe-temp" tabindex="-1">±</button>`;
   if (avecHeure) {
     html += `<input type="time" class="enr-mini-input enr-plat-heure-input"
       data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${heureValeur}">`;
@@ -1664,7 +1681,9 @@ function celluleEnceinteENR(enceinte, moment, releve) {
   const valeur = releve ? releve.temperature : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
   const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
-  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
+  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0">
+    <button type="button" class="btn-signe-temp" tabindex="-1">±</button>
+    <div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempEnceinteENR(input, semaine, jour) {
@@ -1702,7 +1721,9 @@ function celluleDistributionENR(nom, type, releve) {
   const valeur = releve ? releve.temperature : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
   const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
-  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0"><div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
+  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0">
+    <button type="button" class="btn-signe-temp" tabindex="-1">±</button>
+    <div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempDistributionENR(input, semaine, jour) {
