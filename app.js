@@ -1527,13 +1527,21 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
 
   cont.innerHTML = html;
 
-  // -- Listeners enceintes réfrigérées --
+  // -- Listeners enceintes réfrigérées (sauvegarde différée pendant la frappe, comme les plats) --
   cont.querySelectorAll(".enr-mini-input[data-enceinte]").forEach(input => {
+    input.addEventListener("input", () => {
+      const cle = "enceinte|" + input.dataset.enceinte + "|" + input.dataset.moment;
+      declencherSauvegardeDiffereeGenerique(cle, () => enregistrerTempEnceinteENR(input, semaine, jour));
+    });
     input.addEventListener("change", () => enregistrerTempEnceinteENR(input, semaine, jour));
   });
 
-  // -- Listeners enceintes de distribution --
+  // -- Listeners enceintes de distribution (sauvegarde différée pendant la frappe, comme les plats) --
   cont.querySelectorAll(".enr-mini-input[data-distribution]").forEach(input => {
+    input.addEventListener("input", () => {
+      const cle = "distribution|" + input.dataset.distribution + "|" + input.dataset.type;
+      declencherSauvegardeDiffereeGenerique(cle, () => enregistrerTempDistributionENR(input, semaine, jour));
+    });
     input.addEventListener("change", () => enregistrerTempDistributionENR(input, semaine, jour));
   });
 
@@ -1750,6 +1758,13 @@ function declencherSauvegardeDifferee(input, semaine, jour) {
   const cle = input.dataset.plat + "|" + input.dataset.etape + "|" + input.className;
   clearTimeout(minuteriesSauvegarde[cle]);
   minuteriesSauvegarde[cle] = setTimeout(() => enregistrerTempPlatTableENR(input, semaine, jour), 800);
+}
+
+// Version générique (utilisée pour enceintes et distribution) : mêmes minuteries,
+// mais la fonction à exécuter est passée directement plutôt que déduite du dataset.
+function declencherSauvegardeDiffereeGenerique(cle, fn) {
+  clearTimeout(minuteriesSauvegarde[cle]);
+  minuteriesSauvegarde[cle] = setTimeout(fn, 800);
 }
 
 async function enregistrerTempPlatTableENR(input, semaine, jour) {
