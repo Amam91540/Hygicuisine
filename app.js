@@ -2005,6 +2005,16 @@ document.getElementById("hist-filtre-reset").addEventListener("click", () => {
 });
 
 // Colonnes à masquer par onglet (les données restent stockées, juste pas affichées).
+// Ajoute l'abréviation du jour (3 lettres) devant une date "JJ/MM/AAAA", ex. "Mar 15/09/2026".
+const JOURS_ABREGES_HIST = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+function avecJourAbrege(dateStr) {
+  const m = String(dateStr || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return dateStr;
+  const d = new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  if (isNaN(d.getTime())) return dateStr;
+  return `${JOURS_ABREGES_HIST[d.getDay()]} ${dateStr}`;
+}
+
 const COLONNES_MASQUEES_HISTORIQUE = {
   feuille_enr: ["Date du menu", "Date génération", "Heure génération", "Semaine"],
   temp_enceintes: ["Heure Matin", "Heure Soir", "Semaine", "Jour"]
@@ -2062,10 +2072,11 @@ async function chargerHistorique(onglet) {
       indicesAffiches.forEach(i => {
         const cell = row[i];
         const isConformeCol = data.entetes[i] === "Conforme";
+        const isDateCol = data.entetes[i] === "Date";
         const cls = isConformeCol && String(cell).includes("NON") ? "cell-bad"
                   : isConformeCol ? "cell-ok" : "";
         const estLien = typeof cell === "string" && cell.startsWith("http");
-        const contenu = estLien ? `<a href="${cell}" target="_blank" rel="noopener">Ouvrir</a>` : cell;
+        const contenu = estLien ? `<a href="${cell}" target="_blank" rel="noopener">Ouvrir</a>` : (isDateCol ? avecJourAbrege(cell) : cell);
         html += `<td class="${cls}">${contenu}</td>`;
       });
       if (peutSupprimer) {
@@ -2252,7 +2263,7 @@ async function chargerHistoriqueEnceintes(wrap) {
         return `<td class="${mauvais ? "cell-bad" : (val ? "cell-ok" : "")} ${cls}">${val || ""}</td>`;
       };
       html += `<tr>
-        <td>${row[idx.date] || ""}</td><td>${row[idx.enceinte] || ""}</td><td>${row[idx.type] || ""}</td>
+        <td>${avecJourAbrege(row[idx.date]) || ""}</td><td>${row[idx.enceinte] || ""}</td><td>${row[idx.type] || ""}</td>
         <td class="hist-enceintes-groupe-matin">${row[idx.heureMatin] || ""}</td>
         <td class="hist-enceintes-groupe-matin">${row[idx.tempMatin] !== "" ? row[idx.tempMatin] + "°C" : ""}</td>
         ${celluleConforme(row[idx.confMatin], "hist-enceintes-groupe-matin")}
