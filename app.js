@@ -107,7 +107,13 @@ function gotoSection(name) {
   if (name === "menu") chargerMenu();
   if (name === "tracabilite") assurerMenuCharge().then(() => { if (jourIndexParVue.tracabilite === undefined || jourIndexParVue.tracabilite === -1) afficherJourAutoVue("tracabilite"); });
   if (name === "enr") {
-    const p = assurerMenuCharge().then(() => { if (enrIndexActuel === undefined || enrIndexActuel === -1) return afficherENRAuto(); });
+    // On rafraîchit toujours le jour déjà sélectionné (pas seulement au premier
+    // chargement) — sinon une température saisie depuis le Menu n'apparaît pas ici
+    // tant que la page n'est pas rechargée manuellement.
+    const p = assurerMenuCharge().then(() => {
+      if (enrIndexActuel === undefined || enrIndexActuel === -1) return afficherENRAuto();
+      return afficherENRParIndex(enrIndexActuel);
+    });
     if (nomSectionAScrollerApres) {
       const cible = nomSectionAScrollerApres;
       nomSectionAScrollerApres = null;
@@ -947,7 +953,8 @@ function afficherJourParIndexVue(vue, idx) {
         ligne.appendChild(btnPhoto);
         liste.appendChild(ligne);
       } else if (vue === "menu") {
-        // Sur la page Menu, un bouton crayon permet de renommer le plat.
+        // Sur la page Menu, un bouton crayon permet de renommer le plat, et une
+        // corbeille de le retirer du menu de ce jour.
         const ligne = document.createElement("div");
         ligne.className = "plat-card-row";
         card.classList.add("plat-card-flex");
@@ -959,6 +966,13 @@ function afficherJourParIndexVue(vue, idx) {
         btnRenommer.textContent = "✏️";
         btnRenommer.addEventListener("click", () => renommerPlatDialogue(semaine, jour, cat, it.plat));
         ligne.appendChild(btnRenommer);
+        const btnSupprimer = document.createElement("button");
+        btnSupprimer.type = "button";
+        btnSupprimer.className = "plat-photo-btn plat-supprimer-btn";
+        btnSupprimer.setAttribute("aria-label", `Retirer ${it.plat} du menu`);
+        btnSupprimer.textContent = "🗑";
+        btnSupprimer.addEventListener("click", () => supprimerPlatDialogue(semaine, jour, cat, it.plat));
+        ligne.appendChild(btnSupprimer);
         liste.appendChild(ligne);
       } else {
         liste.appendChild(card);
@@ -991,6 +1005,49 @@ async function renommerPlatDialogue(semaine, jour, categorie, ancienNom) {
       await chargerMenu();
     } else {
       toast("Erreur : " + (res.error || "renommage impossible"), true);
+    }
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  }
+}
+
+// Retire un plat du menu — ne touche pas aux relevés déjà enregistrés (conservés
+// dans l'historique), seul le plat disparaît du menu affiché.
+async function supprimerPlatDialogue(semaine, jour, categorie, plat) {
+  if (!confirm(`Retirer "${plat}" du menu de "${jour}" ?\n\nLes températures/photos déjà enregistrées aujourd'hui sous ce nom resteront consultables dans l'historique.`)) return;
+  try {
+    const res = await apiCall("supprimerPlatMenu", { semaine, jour, categorie, plat });
+    if (res.ok) {
+      toast("Plat retiré du menu");
+      await chargerMenu();
+    } else {
+      toast("Erreur : " + (res.error || "suppression impossible"), true);
+    }
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  }
+}
+
+// Version du dialogue d'ajout utilisable depuis la Feuille ENR : demande d'abord
+// la catégorie (pas de contexte de catégorie ici, contrairement à la page Menu),
+// puis ré-affiche la Feuille ENR à jour (pas seulement le Menu).
+async function ajouterPlatDialogueENR(semaine, jour, dateJour) {
+  const categories = ["Entrées", "Plat et accompagnement", "Laitages/Desserts", "Pain"];
+  const choix = prompt(`Ajouter un plat pour "${jour}" — dans quelle catégorie ?\n\n1 = Entrées\n2 = Plat et accompagnement\n3 = Laitages/Desserts (fromage, dessert)\n4 = Pain\n\nTape le numéro (1 à 4) :`);
+  if (choix === null) return;
+  const idx = parseInt(choix, 10) - 1;
+  if (isNaN(idx) || idx < 0 || idx >= categories.length) { toast("Choix invalide — tape un numéro entre 1 et 4.", true); return; }
+  const categorie = categories[idx];
+  const nom = prompt(`Nom du plat à ajouter dans "${categorie}" :`);
+  if (!nom || nom.trim() === "") return;
+  try {
+    const res = await apiCall("ajouterPlatMenu", { semaine, jour, categorie, plat: nom.trim() });
+    if (res.ok) {
+      toast("Plat ajouté");
+      await chargerMenu();
+      construireFeuilleENR(semaine, jour, dateJour);
+    } else {
+      toast("Erreur : " + (res.error || "ajout impossible"), true);
     }
   } catch (err) {
     toast("Erreur : " + err.message, true);
@@ -1092,7 +1149,7 @@ function typeParDefaut(categorie) {
 }
 
 async function ouvrirPlatModal(semaine, jour, plat, categorie) {
-  modalContext = { semaine, jour, plat, categorie, type: typeParDefaut(categorie) };
+  modalContext = { semaine, jour, plat, categorie, type: typeParDefaut(categorie), ta: false };
   document.getElementById("plat-modal-titre").textContent = plat;
   document.getElementById("plat-modal-souscat").textContent = `${jour} — ${categorie}`;
   try {
@@ -1102,10 +1159,39 @@ async function ouvrirPlatModal(semaine, jour, plat, categorie) {
   document.querySelectorAll("#plat-modal-type .seg-btn").forEach(b =>
     b.classList.toggle("active", b.dataset.val === modalContext.type));
   document.getElementById("plat-modal").classList.remove("hidden");
+  await rafraichirTAModal();
   await rafraichirEtapesModal();
   await rafraichirPhotosModal();
   await rafraichirUCPModal();
 }
+
+async function rafraichirTAModal() {
+  const case_ = document.getElementById("plat-modal-ta");
+  case_.checked = false;
+  modalContext.ta = false;
+  try {
+    const data = await apiCall("getTemperatureAmbiante", {
+      semaine: modalContext.semaine, jour: modalContext.jour, plat: modalContext.plat
+    });
+    case_.checked = !!data.ta;
+    modalContext.ta = !!data.ta;
+  } catch (e) { /* reste décoché si la lecture échoue */ }
+}
+
+document.getElementById("plat-modal-ta").addEventListener("change", async (e) => {
+  try {
+    await apiCall("setTemperatureAmbiante", {
+      semaine: modalContext.semaine, jour: modalContext.jour, plat: modalContext.plat,
+      ta: e.target.checked, personne: PRENOM
+    });
+    modalContext.ta = e.target.checked;
+    toast(e.target.checked ? "Marqué « Température ambiante »" : "Marqué « à mesurer »");
+    await rafraichirEtapesModal();
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+    e.target.checked = !e.target.checked;
+  }
+});
 
 async function rafraichirUCPModal() {
   const case_ = document.getElementById("plat-modal-ucp");
@@ -1155,6 +1241,10 @@ document.getElementById("plat-modal-type").addEventListener("click", (e) => {
 async function rafraichirEtapesModal() {
   const cont = document.getElementById("plat-modal-etapes");
   cont.innerHTML = '<p class="table-empty">Chargement…</p>';
+  if (modalContext.ta) {
+    cont.innerHTML = '<p class="table-empty">Température ambiante (T.A.) — aucun relevé nécessaire pour ce plat aujourd\'hui.</p>';
+    return;
+  }
   let dejaSaisi = {};
   try {
     const data = await apiCall("getTempsPlatJour", {
@@ -1305,7 +1395,7 @@ function calculerElementsManquantsENR(donnees, statutPhotos) {
     if (!r.soir) manque.push(`${e.label} — relevé du soir manquant`);
   });
   (donnees.plats || []).forEach(p => {
-    if (estPainLR(p.plat)) return;
+    if (estPainLR(p.plat) || p.ta) return;
     ETAPES_PAR_TYPE[p.type].forEach(etape => {
       if (!p.etapes[etape]) manque.push(`${p.plat} — "${etape}" non saisie`);
     });
@@ -1416,6 +1506,7 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
 
   html += `<div id="enr-section-plats">`;
   html += construireBlocReceptionENR(reception || {});
+  html += `<button type="button" id="enr-ajouter-plat-btn" class="btn-secondary" style="width:100%;margin-bottom:14px">+ Ajouter un plat (entrée, fromage, dessert…)</button>`;
   html += construireTablePlatsENR("Suivi de préparation froide", plats.filter(p => p.type === "froid"), "froid");
   html += construireTablePlatsENR("Remise en température et distribution", plats.filter(p => p.type === "chaud"), "chaud");
   html += `</div>`;
@@ -1452,12 +1543,33 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     input.addEventListener("input", () => declencherSauvegardeDifferee(input, semaine, jour));
   });
 
-  // -- Listeners bascule Chaud/Froid par plat --
+  // -- Listeners bascule Chaud/Froid par plat (avec confirmation) --
   cont.querySelectorAll(".enr-plat-type-toggle").forEach(btn => {
     btn.addEventListener("click", async () => {
+      const libelleActuel = btn.dataset.typeActuel === "chaud" ? "Chaud" : "Froid";
+      const libelleNouveau = btn.dataset.nouveauType === "chaud" ? "Chaud" : "Froid";
+      if (!confirm(`Reclasser "${btn.dataset.plat}" de "${libelleActuel}" vers "${libelleNouveau}" ?\n\nLes étapes de suivi vont changer (ex. remise en température ↔ préparation à froid).`)) return;
       try {
         await apiCall("setPlatType", { semaine, jour, plat: btn.dataset.plat, type: btn.dataset.nouveauType, personne: PRENOM });
         construireFeuilleENR(semaine, jour, dateJour); // ré-affiche avec le plat dans la bonne colonne
+      } catch (err) { toast("Erreur : " + err.message, true); }
+    });
+  });
+
+  // -- Listeners retirer un plat --
+  cont.querySelectorAll(".enr-plat-supprimer").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const plat = btn.dataset.plat;
+      if (!confirm(`Retirer "${plat}" du menu de "${jour}" ?\n\nLes températures/photos déjà enregistrées aujourd'hui sous ce nom resteront consultables dans l'historique.`)) return;
+      try {
+        const res = await apiCall("supprimerPlatMenu", { semaine, jour, categorie: btn.dataset.categorie, plat });
+        if (res.ok) {
+          toast("Plat retiré du menu");
+          await chargerMenu();
+          construireFeuilleENR(semaine, jour, dateJour);
+        } else {
+          toast("Erreur : " + (res.error || "suppression impossible"), true);
+        }
       } catch (err) { toast("Erreur : " + err.message, true); }
     });
   });
@@ -1507,6 +1619,9 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     document.getElementById("enr-reception-photo-nom").textContent =
       document.getElementById("enr-reception-photo").files[0]?.name || "Aucune photo choisie";
   });
+
+  // -- Listener ajout d'un plat directement depuis la Feuille ENR --
+  document.getElementById("enr-ajouter-plat-btn").addEventListener("click", () => ajouterPlatDialogueENR(semaine, jour, dateJour));
 
   // -- Listener constatations --
   document.getElementById("enr-constat-btn").addEventListener("click", () => enregistrerConstatationENR(semaine, jour));
@@ -1585,15 +1700,16 @@ function construireTablePlatsENR(titre, plats, type) {
       <td class="enr-plats-table-nom">
         ${p.plat}
         <button type="button" class="enr-plat-renommer" data-plat="${p.plat}" data-categorie="${p.categorie || ""}">✏️ Renommer</button>
-        <button type="button" class="enr-plat-type-toggle" data-plat="${p.plat}" data-nouveau-type="${type === "chaud" ? "froid" : "chaud"}">
+        <button type="button" class="enr-plat-supprimer" data-plat="${p.plat}" data-categorie="${p.categorie || ""}">🗑 Retirer</button>
+        <button type="button" class="enr-plat-type-toggle" data-plat="${p.plat}" data-nouveau-type="${type === "chaud" ? "froid" : "chaud"}" data-type-actuel="${type}">
           → ${type === "chaud" ? "Froid" : "Chaud"}
         </button>
       </td>`;
-    if (estPainLR(p.plat)) {
+    if (estPainLR(p.plat) || p.ta) {
       etapes.forEach(() => html += `<td class="enr-plat-ta">T.A.</td>`);
     } else {
       etapes.forEach((e, i) => {
-        html += `<td>${celluleEtapePlatENR(p.plat, type, e, p.etapes[e], i > 0)}</td>`;
+        html += `<td>${celluleEtapePlatENR(p.plat, type, e, p.etapes[e], true)}</td>`;
       });
     }
     html += `</tr>`;
@@ -1646,9 +1762,19 @@ async function enregistrerTempPlatTableENR(input, semaine, jour) {
 
   // Remplit l'heure automatiquement dès qu'une température est saisie, mais seulement
   // si le champ est encore vide — une heure déjà modifiée à la main n'est jamais écrasée.
+  // Pour l'étape "Réception" uniquement, on reprend l'heure de réception déjà saisie
+  // plus haut (même livraison pour tous les plats) plutôt que l'heure actuelle — avec
+  // toujours la possibilité de la corriger à la main pour un plat livré à part.
   if (inputHeure && !inputHeure.value) {
-    const maintenant = new Date();
-    inputHeure.value = `${String(maintenant.getHours()).padStart(2, "0")}:${String(maintenant.getMinutes()).padStart(2, "0")}`;
+    if (etape === "Réception") {
+      const champReceptionGlobal = document.getElementById("enr-reception-heure");
+      inputHeure.value = (champReceptionGlobal && champReceptionGlobal.value)
+        ? champReceptionGlobal.value
+        : `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+    } else {
+      const maintenant = new Date();
+      inputHeure.value = `${String(maintenant.getHours()).padStart(2, "0")}:${String(maintenant.getMinutes()).padStart(2, "0")}`;
+    }
   }
 
   const statut = cellule.querySelector(".enr-mini-statut");
@@ -1679,29 +1805,38 @@ function Utilities_formatDateFr(d) {
 
 function celluleEnceinteENR(enceinte, moment, releve) {
   const valeur = releve ? releve.temperature : "";
+  const heureValeur = releve ? releve.heure : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
-  const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
+  const statut = releve ? (horsNorme ? `⚠ enregistré` : `✓ enregistré`) : "";
   return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0">
     <button type="button" class="btn-signe-temp" tabindex="-1">±</button>
+    <input type="time" class="enr-mini-input enr-enceinte-heure-input" data-enceinte="${enceinte}" data-moment="${moment}" value="${heureValeur}">
     <div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempEnceinteENR(input, semaine, jour) {
-  if (!input.value) return;
   const enceinte = input.dataset.enceinte;
   const moment = input.dataset.moment;
+  const cellule = input.closest("td");
+  const inputTemp = cellule.querySelector(".enr-mini-input:not(.enr-enceinte-heure-input)");
+  const inputHeure = cellule.querySelector(".enr-enceinte-heure-input");
+  if (!inputTemp.value) return;
+  if (inputHeure && !inputHeure.value) {
+    const maintenant = new Date();
+    inputHeure.value = `${String(maintenant.getHours()).padStart(2, "0")}:${String(maintenant.getMinutes()).padStart(2, "0")}`;
+  }
   // Type positif/négatif déduit de l'enceinte (le Congélateur est la seule enceinte négative de la liste).
   const typeEnceinte = enceinte === "Congélateur" ? "negatif" : "positif";
   try {
     const res = await apiCall("addTempEnceinte", {
-      enceinte, typeEnceinte, moment, temperature: temperatureSaisie(input.value), semaine, jour, personne: PRENOM
+      enceinte, typeEnceinte, moment, temperature: temperatureSaisie(inputTemp.value),
+      heure: inputHeure ? inputHeure.value : "", semaine, jour, personne: PRENOM
     });
     toast(res.conforme ? `${enceinte} (${moment}) enregistrée` : `${enceinte} (${moment}) — hors norme, enregistrée quand même`, !res.conforme);
-    input.classList.toggle("enr-alerte", !res.conforme);
-    const statut = input.parentElement.querySelector(".enr-mini-statut");
+    inputTemp.classList.toggle("enr-alerte", !res.conforme);
+    const statut = cellule.querySelector(".enr-mini-statut");
     if (statut) {
-      const heureLocale = new Date().toTimeString().slice(0, 5);
-      statut.textContent = (res.conforme ? "✓ " : "⚠ ") + heureLocale;
+      statut.textContent = res.conforme ? "✓ enregistré" : "⚠ enregistré";
       statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
     }
   } catch (err) {
@@ -1719,25 +1854,36 @@ function dernierReleveDistribution(releves, nom) {
 
 function celluleDistributionENR(nom, type, releve) {
   const valeur = releve ? releve.temperature : "";
+  const heureValeur = releve ? releve.heure : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
-  const statut = releve ? (horsNorme ? `⚠ ${releve.heure}` : `✓ ${releve.heure}`) : "";
+  const statut = releve ? (horsNorme ? `⚠ enregistré` : `✓ enregistré`) : "";
   return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0">
     <button type="button" class="btn-signe-temp" tabindex="-1">±</button>
+    <input type="time" class="enr-mini-input enr-distribution-heure-input" data-distribution="${nom}" data-type="${type}" value="${heureValeur}">
     <div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
 }
 
 async function enregistrerTempDistributionENR(input, semaine, jour) {
-  if (!input.value) return;
   const nom = input.dataset.distribution;
   const type = input.dataset.type;
+  const cellule = input.closest("td");
+  const inputTemp = cellule.querySelector(".enr-mini-input:not(.enr-distribution-heure-input)");
+  const inputHeure = cellule.querySelector(".enr-distribution-heure-input");
+  if (!inputTemp.value) return;
+  if (inputHeure && !inputHeure.value) {
+    const maintenant = new Date();
+    inputHeure.value = `${String(maintenant.getHours()).padStart(2, "0")}:${String(maintenant.getMinutes()).padStart(2, "0")}`;
+  }
   try {
-    const res = await apiCall("addTempDistribution", { semaine, jour, nom, type, temperature: temperatureSaisie(input.value), personne: PRENOM });
+    const res = await apiCall("addTempDistribution", {
+      semaine, jour, nom, type, temperature: temperatureSaisie(inputTemp.value),
+      heure: inputHeure ? inputHeure.value : "", personne: PRENOM
+    });
     toast(res.conforme ? `${nom} enregistrée` : `${nom} — hors norme, enregistrée quand même`, !res.conforme);
-    input.classList.toggle("enr-alerte", !res.conforme);
-    const statut = input.parentElement.querySelector(".enr-mini-statut");
+    inputTemp.classList.toggle("enr-alerte", !res.conforme);
+    const statut = cellule.querySelector(".enr-mini-statut");
     if (statut) {
-      const heureLocale = new Date().toTimeString().slice(0, 5);
-      statut.textContent = (res.conforme ? "✓ " : "⚠ ") + heureLocale;
+      statut.textContent = res.conforme ? "✓ enregistré" : "⚠ enregistré";
       statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
     }
   } catch (err) {
