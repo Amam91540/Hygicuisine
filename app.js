@@ -1832,7 +1832,7 @@ function celluleEnceinteENR(enceinte, moment, releve) {
 async function enregistrerTempEnceinteENR(input, semaine, jour) {
   const enceinte = input.dataset.enceinte;
   const moment = input.dataset.moment;
-  const cellule = input.closest("td");
+  const cellule = input.closest(".enr-enceinte-champ");
   const inputTemp = cellule.querySelector(".enr-mini-input:not(.enr-enceinte-heure-input)");
   const inputHeure = cellule.querySelector(".enr-enceinte-heure-input");
   if (!inputTemp.value) return;
@@ -1881,7 +1881,7 @@ function celluleDistributionENR(nom, type, releve) {
 async function enregistrerTempDistributionENR(input, semaine, jour) {
   const nom = input.dataset.distribution;
   const type = input.dataset.type;
-  const cellule = input.closest("td");
+  const cellule = input.closest(".enr-enceinte-champ");
   const inputTemp = cellule.querySelector(".enr-mini-input:not(.enr-distribution-heure-input)");
   const inputHeure = cellule.querySelector(".enr-distribution-heure-input");
   if (!inputTemp.value) return;
