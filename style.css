@@ -481,6 +481,13 @@ tbody tr:last-child td{border-bottom:none}
 }
 .enr-mini-statut{font-size:11.5px;margin-top:6px;font-weight:600}
 
+.gestion-nc-champ{
+  display:block;width:100%;box-sizing:border-box;margin-top:6px;padding:7px 8px;
+  border:1px solid var(--rust);border-radius:8px;background:#FDEDEB;
+  font-family:var(--body);font-size:11.5px;color:var(--ink);resize:vertical;min-height:42px;
+}
+.gestion-nc-champ::placeholder{color:#B23A2A;opacity:0.65}
+
 /* Plats : tableau façon classeur Excel — produit en 1re colonne, une colonne par étape */
 .enr-plats-table-wrap{margin-bottom:14px}
 .enr-plats-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:12px}
@@ -500,6 +507,11 @@ tbody tr:last-child td{border-bottom:none}
   display:block;margin-top:4px;background:none;border:1px solid var(--line);border-radius:7px;
   padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;
 }
+.enr-plat-supprimer{
+  display:block;margin-top:4px;background:none;border:1px solid var(--rust);border-radius:7px;
+  padding:3px 8px;font-size:10.5px;font-weight:600;color:var(--rust);cursor:pointer;
+}
+.plat-supprimer-btn{background:#FDEDEB;color:var(--rust)}
 .enr-plat-ta{
   font-family:var(--mono);font-weight:700;color:var(--ink-soft);font-size:13px;background:#F1F5F5;
 }
