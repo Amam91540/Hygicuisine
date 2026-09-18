@@ -1460,7 +1460,7 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     cont.innerHTML = `<p class="table-empty">Erreur de chargement : ${e.message}</p>`;
     return;
   }
-  const { releveEnceintes, releveDistribution, constat, reception, plats } = data;
+  const { releveEnceintes, releveDistribution, constat, reception, plats, gestionNCPlats = {}, gestionNCEnceintes = {}, gestionNCDistribution = {} } = data;
   dernieresDonneesENR = { semaine, jour, ...data };
 
   // -------- Construction du HTML --------
@@ -1477,11 +1477,11 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
       <div class="enr-enceinte-champs">
         <div class="enr-enceinte-champ">
           <label>Matin</label>
-          ${celluleEnceinteENR(e.app, "matin", r.matin)}
+          ${celluleEnceinteENR(e.app, "matin", r.matin, gestionNCEnceintes, semaine, jour)}
         </div>
         <div class="enr-enceinte-champ">
           <label>Soir</label>
-          ${celluleEnceinteENR(e.app, "soir", r.soir)}
+          ${celluleEnceinteENR(e.app, "soir", r.soir, gestionNCEnceintes, semaine, jour)}
         </div>
       </div>
     </div>`;
@@ -1497,7 +1497,7 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
       <div class="enr-enceinte-champs enr-enceinte-champs-simple">
         <div class="enr-enceinte-champ">
           <label>Avant service</label>
-          ${celluleDistributionENR(e.nom, e.type, releve)}
+          ${celluleDistributionENR(e.nom, e.type, releve, gestionNCDistribution, semaine, jour)}
         </div>
       </div>
     </div>`;
@@ -1507,8 +1507,8 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
   html += `<div id="enr-section-plats">`;
   html += construireBlocReceptionENR(reception || {});
   html += `<button type="button" id="enr-ajouter-plat-btn" class="btn-secondary" style="width:100%;margin-bottom:14px">+ Ajouter un plat (entrée, fromage, dessert…)</button>`;
-  html += construireTablePlatsENR("Suivi de préparation froide", plats.filter(p => p.type === "froid"), "froid");
-  html += construireTablePlatsENR("Remise en température et distribution", plats.filter(p => p.type === "chaud"), "chaud");
+  html += construireTablePlatsENR("Suivi de préparation froide", plats.filter(p => p.type === "froid"), "froid", gestionNCPlats, semaine, jour);
+  html += construireTablePlatsENR("Remise en température et distribution", plats.filter(p => p.type === "chaud"), "chaud", gestionNCPlats, semaine, jour);
   html += `</div>`;
 
   html += `<div class="enr-titre-section">Constatation / Analyse / Action(s)</div>
@@ -1526,6 +1526,19 @@ async function construireFeuilleENR(semaine, jour, dateJour) {
     </div>`;
 
   cont.innerHTML = html;
+
+  // -- Listener générique pour toutes les cases "Gestion de la non-conformité" --
+  // (enceintes, distribution, plats) : sauvegarde différée pendant la frappe, comme le reste.
+  // La clé complète est déjà construite à l'affichage (data-cle), donc aucune reconstruction ici.
+  cont.querySelectorAll(".gestion-nc-champ").forEach(champ => {
+    const sauvegarder = async () => {
+      try {
+        await apiCall("setGestionNC", { cle: champ.dataset.cle, texte: champ.value });
+      } catch (err) { toast("Erreur : " + err.message, true); }
+    };
+    champ.addEventListener("input", () => declencherSauvegardeDiffereeGenerique("gnc|" + champ.dataset.cle, sauvegarder));
+    champ.addEventListener("change", sauvegarder);
+  });
 
   // -- Listeners enceintes réfrigérées (sauvegarde différée pendant la frappe, comme les plats) --
   cont.querySelectorAll(".enr-mini-input[data-enceinte]").forEach(input => {
@@ -1694,7 +1707,7 @@ function convertirDateIsoEnFr(dateIso) {
 // Construit un tableau plats × étapes dans le même esprit que le classeur Excel d'origine :
 // Nom du produit | Réception | [étape 2] | [étape 3] | Distribution.
 // Les 3 dernières étapes (tout sauf Réception) ont aussi un champ Heure à saisir manuellement.
-function construireTablePlatsENR(titre, plats, type) {
+function construireTablePlatsENR(titre, plats, type, gestionNCPlats, semaine, jour) {
   const etapes = ETAPES_PAR_TYPE[type]; // [Réception, ..., ..., Distribution]
   let html = `<div class="enr-titre-section">${titre}</div>`;
   if (plats.length === 0) {
@@ -1717,7 +1730,7 @@ function construireTablePlatsENR(titre, plats, type) {
       etapes.forEach(() => html += `<td class="enr-plat-ta">T.A.</td>`);
     } else {
       etapes.forEach((e, i) => {
-        html += `<td>${celluleEtapePlatENR(p.plat, type, e, p.etapes[e], true)}</td>`;
+        html += `<td>${celluleEtapePlatENR(p.plat, type, e, p.etapes[e], true, gestionNCPlats, semaine, jour)}</td>`;
       });
     }
     html += `</tr>`;
@@ -1732,7 +1745,7 @@ function estPainLR(plat) {
   return n.includes("pain") && n.includes("lr");
 }
 
-function celluleEtapePlatENR(plat, type, etape, info, avecHeure) {
+function celluleEtapePlatENR(plat, type, etape, info, avecHeure, gestionNC, semaine, jour) {
   const valeur = info ? info.temperature : "";
   const heureValeur = info ? info.heure : "";
   const horsNorme = info && String(info.conforme).includes("NON");
@@ -1747,6 +1760,10 @@ function celluleEtapePlatENR(plat, type, etape, info, avecHeure) {
       data-plat="${plat}" data-type="${type}" data-etape="${etape}" value="${heureValeur}">`;
   }
   html += `<div class="enr-mini-statut${info ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
+  if (horsNorme) {
+    const gestionValeur = (gestionNC && gestionNC[`${plat}_${type}_${etape}`]) || "";
+    html += `<textarea class="gestion-nc-champ" data-cle="plat_${semaine}_${jour}_${plat}_${type}_${etape}" placeholder="Gestion de la non-conformité : action mise en place…">${gestionValeur}</textarea>`;
+  }
   return html;
 }
 
@@ -1818,15 +1835,20 @@ function Utilities_formatDateFr(d) {
   return `${jj}/${mm}/${d.getFullYear()}`;
 }
 
-function celluleEnceinteENR(enceinte, moment, releve) {
+function celluleEnceinteENR(enceinte, moment, releve, gestionNC, semaine, jour) {
   const valeur = releve ? releve.temperature : "";
   const heureValeur = releve ? releve.heure : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
   const statut = releve ? (horsNorme ? `⚠ enregistré` : `✓ enregistré`) : "";
-  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0">
+  const gestionValeur = (gestionNC && gestionNC[`${enceinte}_${moment}`]) || "";
+  let html = `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-enceinte="${enceinte}" data-moment="${moment}" value="${valeur}" placeholder="0.0">
     <button type="button" class="btn-signe-temp" tabindex="-1">±</button>
     <input type="time" class="enr-mini-input enr-enceinte-heure-input" data-enceinte="${enceinte}" data-moment="${moment}" value="${heureValeur}">
     <div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
+  if (horsNorme) {
+    html += `<textarea class="gestion-nc-champ" data-cle="enceinte_${semaine}_${jour}_${enceinte}_${moment}" placeholder="Gestion de la non-conformité : action mise en place…">${gestionValeur}</textarea>`;
+  }
+  return html;
 }
 
 async function enregistrerTempEnceinteENR(input, semaine, jour) {
@@ -1867,15 +1889,20 @@ function dernierReleveDistribution(releves, nom) {
   return correspondants.length ? correspondants[correspondants.length - 1] : null;
 }
 
-function celluleDistributionENR(nom, type, releve) {
+function celluleDistributionENR(nom, type, releve, gestionNC, semaine, jour) {
   const valeur = releve ? releve.temperature : "";
   const heureValeur = releve ? releve.heure : "";
   const horsNorme = releve && String(releve.conforme).includes("NON");
   const statut = releve ? (horsNorme ? `⚠ enregistré` : `✓ enregistré`) : "";
-  return `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0">
+  const gestionValeur = (gestionNC && gestionNC[nom]) || "";
+  let html = `<input type="text" inputmode="decimal" class="enr-mini-input${horsNorme ? " enr-alerte" : ""}" data-distribution="${nom}" data-type="${type}" value="${valeur}" placeholder="0.0">
     <button type="button" class="btn-signe-temp" tabindex="-1">±</button>
     <input type="time" class="enr-mini-input enr-distribution-heure-input" data-distribution="${nom}" data-type="${type}" value="${heureValeur}">
     <div class="enr-mini-statut${releve ? (horsNorme ? " cell-bad" : " cell-ok") : ""}">${statut}</div>`;
+  if (horsNorme) {
+    html += `<textarea class="gestion-nc-champ" data-cle="distrib_${semaine}_${jour}_${nom}" placeholder="Gestion de la non-conformité : action mise en place…">${gestionValeur}</textarea>`;
+  }
+  return html;
 }
 
 async function enregistrerTempDistributionENR(input, semaine, jour) {
