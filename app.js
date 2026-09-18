@@ -1784,6 +1784,29 @@ function declencherSauvegardeDiffereeGenerique(cle, fn) {
   minuteriesSauvegarde[cle] = setTimeout(fn, 800);
 }
 
+// Crée dynamiquement la case "Gestion de la non-conformité" juste après un enregistrement
+// hors norme (sans attendre un rechargement de page), ou la retire si la valeur redevient
+// conforme. Réutilisée pour les plats, les enceintes réfrigérées et la distribution.
+function assurerCaseGestionNC(cellule, conforme, cle) {
+  let champ = cellule.querySelector(".gestion-nc-champ");
+  if (conforme) {
+    if (champ) champ.remove();
+    return;
+  }
+  if (champ) return; // déjà présente, ne pas écraser ce qui est en train d'être tapé
+  champ = document.createElement("textarea");
+  champ.className = "gestion-nc-champ";
+  champ.dataset.cle = cle;
+  champ.placeholder = "Gestion de la non-conformité : action mise en place…";
+  const sauvegarder = async () => {
+    try { await apiCall("setGestionNC", { cle: champ.dataset.cle, texte: champ.value }); }
+    catch (err) { toast("Erreur : " + err.message, true); }
+  };
+  champ.addEventListener("input", () => declencherSauvegardeDiffereeGenerique("gnc|" + champ.dataset.cle, sauvegarder));
+  champ.addEventListener("change", sauvegarder);
+  cellule.appendChild(champ);
+}
+
 async function enregistrerTempPlatTableENR(input, semaine, jour) {
   const { plat, type, etape } = input.dataset;
   // Le champ heure et le champ température d'une même étape sont dans la même cellule.
@@ -1822,6 +1845,7 @@ async function enregistrerTempPlatTableENR(input, semaine, jour) {
       statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
     }
     inputTemp.classList.toggle("enr-alerte", !res.conforme);
+    assurerCaseGestionNC(cellule, res.conforme, `plat_${semaine}_${jour}_${plat}_${type}_${etape}`);
   } catch (err) {
     if (statut) { statut.textContent = "⚠ non enregistré"; statut.className = "enr-mini-statut cell-bad"; }
     toast("Erreur : " + err.message, true);
@@ -1876,6 +1900,7 @@ async function enregistrerTempEnceinteENR(input, semaine, jour) {
       statut.textContent = res.conforme ? "✓ enregistré" : "⚠ enregistré";
       statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
     }
+    assurerCaseGestionNC(cellule, res.conforme, `enceinte_${semaine}_${jour}_${enceinte}_${moment}`);
   } catch (err) {
     toast("Erreur : " + err.message, true);
   }
@@ -1928,6 +1953,7 @@ async function enregistrerTempDistributionENR(input, semaine, jour) {
       statut.textContent = res.conforme ? "✓ enregistré" : "⚠ enregistré";
       statut.className = "enr-mini-statut " + (res.conforme ? "cell-ok" : "cell-bad");
     }
+    assurerCaseGestionNC(cellule, res.conforme, `distrib_${semaine}_${jour}_${nom}`);
   } catch (err) {
     toast("Erreur : " + err.message, true);
   }
