@@ -535,6 +535,38 @@ tbody tr:last-child td{border-bottom:none}
 }
 .enr-constat-grid button{margin-top:4px}
 
+/* ---------------- Enregistrement hebdomadaire / ponctuel ---------------- */
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.card-form input[type=time],
+.card-form textarea{
+  border:1px solid var(--line);border-radius:10px;padding:12px 13px;
+  font-family:var(--body);font-size:15px;color:var(--ink);background:#FBFDFD;
+}
+.card-form textarea{resize:vertical;min-height:60px}
+.registre-table-wrap{margin-top:18px}
+.registre-souszone-titre{
+  font-family:var(--display);font-size:13.5px;font-weight:700;margin:6px 0 -6px;color:var(--teal-dark);
+}
+
+.ctrl-zone{margin-bottom:18px}
+.ctrl-zone-titre{
+  font-family:var(--display);font-size:14.5px;font-weight:700;margin-bottom:10px;
+  padding-bottom:6px;border-bottom:1px solid var(--line);color:var(--ink);
+}
+.ctrl-point{
+  background:#F9FBFB;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px;
+}
+.ctrl-point-libelle{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:10px;white-space:pre-line}
+.ctrl-point-radios{display:flex;gap:8px}
+.ctrl-radio-btn{
+  flex:1;padding:9px;border-radius:8px;border:1px solid var(--line);background:#fff;
+  font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;text-align:center;
+}
+.ctrl-radio-btn[data-statut=C].active{background:var(--green);border-color:var(--green);color:#fff}
+.ctrl-radio-btn[data-statut=NC].active{background:var(--rust);border-color:var(--rust);color:#fff}
+.ctrl-radio-btn[data-statut=NO].active{background:var(--ink-soft);border-color:var(--ink-soft);color:#fff}
+
 /* ---------------- Desktop ---------------- */
 @media (min-width:820px){
   .tabbar{
