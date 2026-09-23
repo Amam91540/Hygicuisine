@@ -104,6 +104,14 @@ function gotoSection(name) {
   document.getElementById("section-" + name).classList.add("active");
   document.querySelector(`.tab-btn[data-section="${name}"]`).classList.add("active");
   if (name === "historique") chargerHistorique(currentHistTab);
+  if (name === "hebdo") {
+    const activeSub = document.querySelector('#section-hebdo .subtab-btn.active');
+    if (activeSub) chargerSousOngletRegistre("hebdo", activeSub.dataset.sub);
+  }
+  if (name === "ponctuel") {
+    const activeSub = document.querySelector('#section-ponctuel .subtab-btn.active');
+    if (activeSub) chargerSousOngletRegistre("ponctuel", activeSub.dataset.sub);
+  }
   if (name === "menu") chargerMenu();
   if (name === "tracabilite") assurerMenuCharge().then(() => { if (jourIndexParVue.tracabilite === undefined || jourIndexParVue.tracabilite === -1) afficherJourAutoVue("tracabilite"); });
   if (name === "enr") {
@@ -152,6 +160,26 @@ document.querySelectorAll('#section-stocks .subtab-btn').forEach(btn => {
     document.querySelectorAll('#section-stocks .subpanel').forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("sub-" + btn.dataset.sub).classList.add("active");
+  });
+});
+
+// ================= SOUS-ONGLETS HEBDOMADAIRE / PONCTUEL =================
+document.querySelectorAll('#section-hebdo .subtab-btn').forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll('#section-hebdo .subtab-btn').forEach(b => b.classList.remove("active"));
+    document.querySelectorAll('#section-hebdo .subpanel').forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("hebdo-sub-" + btn.dataset.sub).classList.add("active");
+    chargerSousOngletRegistre("hebdo", btn.dataset.sub);
+  });
+});
+document.querySelectorAll('#section-ponctuel .subtab-btn').forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll('#section-ponctuel .subtab-btn').forEach(b => b.classList.remove("active"));
+    document.querySelectorAll('#section-ponctuel .subpanel').forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("ponctuel-sub-" + btn.dataset.sub).classList.add("active");
+    chargerSousOngletRegistre("ponctuel", btn.dataset.sub);
   });
 });
 
@@ -2035,6 +2063,318 @@ document.getElementById("enr-pdf-btn").addEventListener("click", async () => {
   }
 });
 
+// ================= ENREGISTREMENT HEBDOMADAIRE / PONCTUEL =================
+function dateAujourdhuiIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// ---- Rendu générique liste + suppression (réutilise getHistorique / supprimerLigneHistorique,
+// déjà génériques côté serveur — donc zéro code serveur ou frontend dupliqué par formulaire).
+async function chargerListeOnglet(onglet, wrapId, options = {}) {
+  const wrap = document.getElementById(wrapId);
+  wrap.innerHTML = '<p class="table-empty">Chargement…</p>';
+  try {
+    const data = await apiCall("getHistorique", { onglet, limite: options.limite || 30 });
+    const lignes = data.lignes || [];
+    if (lignes.length === 0) {
+      wrap.innerHTML = '<p class="table-empty">Aucun enregistrement pour le moment.</p>';
+      return;
+    }
+    const entetes = data.entetes;
+    let html = "<table><thead><tr>";
+    entetes.forEach(h => { html += `<th>${h}</th>`; });
+    html += "<th></th></tr></thead><tbody>";
+    lignes.forEach((row, rowIdx) => {
+      html += "<tr>";
+      row.forEach((cell, i) => {
+        const nomCol = String(entetes[i] || "");
+        const estDate = nomCol.indexOf("Date") !== -1;
+        const estStatut = nomCol === "Statut" || nomCol === "Conforme";
+        const texte = String(cell === undefined || cell === null ? "" : cell);
+        const cls = estStatut && (texte.indexOf("NC") !== -1 || texte.indexOf("NON") !== -1) ? "cell-bad"
+                  : estStatut && (texte === "C" || texte.indexOf("Conforme") !== -1) ? "cell-ok" : "";
+        html += `<td class="${cls}">${estDate ? avecJourAbrege(texte) : texte}</td>`;
+      });
+      html += `<td><button type="button" class="hist-supprimer-btn" data-row="${rowIdx}">🗑</button></td>`;
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+    wrap.querySelectorAll(".hist-supprimer-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("Supprimer définitivement cet enregistrement ?")) return;
+        try {
+          const res = await apiCall("supprimerLigneHistorique", { onglet, ligne: lignes[parseInt(btn.dataset.row, 10)] });
+          if (res.ok) { toast("Enregistrement supprimé"); chargerListeOnglet(onglet, wrapId, options); }
+          else toast("Erreur : " + (res.error || "suppression impossible"), true);
+        } catch (err) { toast("Erreur : " + err.message, true); }
+      });
+    });
+  } catch (err) {
+    wrap.innerHTML = `<p class="table-empty">Erreur de chargement : ${err.message}</p>`;
+  }
+}
+
+async function ajouterLigneOngletUI(onglet, entetes, valeurs, formEl, wrapId) {
+  try {
+    const res = await apiCall("ajouterLigneOnglet", { onglet, entetes, valeurs });
+    if (res.ok) {
+      toast("Enregistré");
+      formEl.reset();
+      chargerListeOnglet(onglet, wrapId);
+      return true;
+    }
+    toast("Erreur : " + (res.error || "échec de l'enregistrement"), true);
+    return false;
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+    return false;
+  }
+}
+
+const SOUS_ONGLETS_REGISTRE = {
+  hebdo: {
+    nettoyage: { onglet: "nettoyage_ponctuel", wrap: "nett-table-wrap" },
+    controle: { onglet: "controle_visuel_hebdo", wrap: "ctrl-table-wrap" }
+  },
+  ponctuel: {
+    huiles: { onglet: "suivi_huiles", wrap: "huiles-table-wrap" },
+    sondes: { onglet: "verif_sondes", wrap: "sondes-table-wrap" },
+    decongelation: { onglet: "suivi_decongelation", wrap: "decongel-table-wrap" },
+    constat: { onglet: "constat_ponctuel", wrap: "constat-ponctuel-table-wrap" }
+  }
+};
+function chargerSousOngletRegistre(section, sub) {
+  const info = SOUS_ONGLETS_REGISTRE[section] && SOUS_ONGLETS_REGISTRE[section][sub];
+  if (info) chargerListeOnglet(info.onglet, info.wrap);
+}
+
+// ---- Nettoyage ponctuel des surfaces (chap. 3) ----
+document.getElementById("nett-date").value = dateAujourdhuiIso();
+document.getElementById("form-nettoyage").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const entetes = ["Date", "Surface nettoyée", "Réalisé", "Constatation / action corrective", "Personne"];
+  const valeurs = [
+    convertirDateIsoEnFr(document.getElementById("nett-date").value),
+    document.getElementById("nett-surface").value,
+    document.getElementById("nett-realise").checked ? "Oui" : "Non",
+    document.getElementById("nett-constat").value,
+    PRENOM
+  ];
+  const ok = await ajouterLigneOngletUI("nettoyage_ponctuel", entetes, valeurs, document.getElementById("form-nettoyage"), "nett-table-wrap");
+  if (ok) { document.getElementById("nett-date").value = dateAujourdhuiIso(); document.getElementById("nett-realise").checked = true; }
+});
+
+// ---- Contrôle visuel hebdomadaire du nettoyage (chap. 3) ----
+const CONTROLE_VISUEL_ZONES = [
+  { zone: "Stockage", points: [
+    "Etat de propreté réserve, armoire froide, étagères (plafond, murs, sols, siphon, intérieur, extérieur des enceintes)",
+    "Rangement de la zone (sectorisation, absence de stockage au sol…)",
+    "Conservation satisfaisante des denrées (protection, identification)"
+  ] },
+  { zone: "Local pré-traitement", points: [
+    "Etat de propreté local (plafond, murs, sols, siphon, table, rangement...)",
+    "Etat de propreté du matériel (bac de décontamination, ouvre-boîte, lave-mains...) — approvisionnement produits lessiviels et lave-mains"
+  ] },
+  { zone: "Préparation froide", points: [
+    "Etat de propreté local préparation froide (plafond, murs, sols, siphon, table, rangement...)",
+    "Etat de propreté matériel",
+    "Rangement de la zone (absence de matériel au sol, protection du matériel, vaisselle propre)",
+    "Conservation satisfaisante des denrées (protection, identification)"
+  ] },
+  { zone: "Office de remise en température", points: [
+    "Etat de propreté de l'office (plafond, murs, sols, siphon, table, tiroirs et placards...) — approvisionnement produits lessiviels et lave-mains",
+    "Etat de propreté matériel (four, friteuse…)"
+  ] },
+  { zone: "Self et salle à manger", points: [
+    "Etat de propreté de la zone (plafond, murs, sols, siphon, table, chaises...)",
+    "Etat de propreté matériel (étuve, vitrine, bain-marie, micro-ondes, fontaine à eau…)"
+  ] },
+  { zone: "Laverie", points: [
+    "Etat de propreté local (plafond, murs, sols, siphon, tiroirs et placards...)",
+    "Etat de propreté matériel (machine — absence de calcaire —, chariot, bac gastro)",
+    "Rangement de la zone (absence de matériel au sol, protection de la vaisselle propre…)"
+  ] },
+  { zone: "Vestiaires", points: [
+    "Etat de propreté local (plafond, murs, sols, siphon, armoires...)",
+    "Rangement de la zone (absence tenue, chaussures à l'extérieur, lave-mains approvisionné et propre…)"
+  ] },
+  { zone: "Local poubelle", points: [
+    "Etat de propreté local (plafond, murs, sols, siphon...) — approvisionnement produits lessiviels et lave-mains",
+    "Etat de propreté du matériel (container propre, absence de raclettes ou produits lessiviels au sol…)"
+  ] },
+  { zone: "Traçabilité", points: [
+    "Présence de plats témoins (identification, propreté des bacs, concordance avec les menus…)",
+    "Présence des étiquettes fournisseurs et produits finis"
+  ] }
+];
+
+function construireZonesControleVisuel() {
+  const cont = document.getElementById("ctrl-visuel-zones");
+  let html = "";
+  CONTROLE_VISUEL_ZONES.forEach((z, zi) => {
+    html += `<div class="ctrl-zone"><div class="ctrl-zone-titre">${z.zone}</div>`;
+    z.points.forEach((point, pi) => {
+      html += `
+        <div class="ctrl-point" data-cle="${zi}_${pi}" data-zone="${z.zone}" data-point="${point.replace(/"/g, "&quot;")}">
+          <div class="ctrl-point-libelle">${point}</div>
+          <div class="ctrl-point-radios">
+            <button type="button" class="ctrl-radio-btn" data-statut="C">C</button>
+            <button type="button" class="ctrl-radio-btn" data-statut="NC">NC</button>
+            <button type="button" class="ctrl-radio-btn" data-statut="NO">NO</button>
+          </div>
+          <input type="text" class="ctrl-point-constat hidden" placeholder="Constatation / action corrective">
+        </div>`;
+    });
+    html += `</div>`;
+  });
+  cont.innerHTML = html;
+
+  cont.querySelectorAll(".ctrl-radio-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const pointDiv = btn.closest(".ctrl-point");
+      pointDiv.querySelectorAll(".ctrl-radio-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      pointDiv.dataset.statut = btn.dataset.statut;
+      const champConstat = pointDiv.querySelector(".ctrl-point-constat");
+      champConstat.classList.toggle("hidden", btn.dataset.statut !== "NC");
+    });
+  });
+}
+construireZonesControleVisuel();
+document.getElementById("ctrl-date").value = dateAujourdhuiIso();
+
+document.getElementById("form-controle-visuel").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const date = document.getElementById("ctrl-date").value;
+  const responsable = document.getElementById("ctrl-responsable").value;
+  const points = Array.from(document.querySelectorAll("#ctrl-visuel-zones .ctrl-point"));
+  const nonRenseignes = points.filter(p => !p.dataset.statut);
+  if (nonRenseignes.length > 0) {
+    if (!confirm(`${nonRenseignes.length} point(s) n'ont pas été évalués (C/NC/NO). Continuer quand même ?`)) return;
+  }
+  const entetes = ["Date", "Responsable", "Zone", "Point à vérifier", "Statut", "Constatation / action corrective", "Personne"];
+  const dateFr = convertirDateIsoEnFr(date);
+  try {
+    for (const p of points) {
+      if (!p.dataset.statut) continue;
+      const valeurs = [
+        dateFr, responsable, p.dataset.zone, p.dataset.point, p.dataset.statut,
+        p.querySelector(".ctrl-point-constat").value, PRENOM
+      ];
+      await apiCall("ajouterLigneOnglet", { onglet: "controle_visuel_hebdo", entetes, valeurs });
+    }
+    toast("Contrôle visuel enregistré");
+    document.getElementById("form-controle-visuel").reset();
+    document.getElementById("ctrl-date").value = dateAujourdhuiIso();
+    construireZonesControleVisuel();
+    chargerListeOnglet("controle_visuel_hebdo", "ctrl-table-wrap");
+  } catch (err) {
+    toast("Erreur : " + err.message, true);
+  }
+});
+
+// ---- Suivi des huiles de friture (chap. 3) ----
+document.getElementById("huile-date").value = dateAujourdhuiIso();
+document.getElementById("form-huiles").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const entetes = ["Date", "Durée d'utilisation friteuse", "Filtration effectuée", "Changement d'huile effectué", "Nettoyage friteuse effectué", "Personne"];
+  const valeurs = [
+    convertirDateIsoEnFr(document.getElementById("huile-date").value),
+    document.getElementById("huile-duree").value,
+    document.getElementById("huile-filtration").checked ? "Oui" : "Non",
+    document.getElementById("huile-changement").checked ? "Oui" : "Non",
+    document.getElementById("huile-nettoyage").checked ? "Oui" : "Non",
+    PRENOM
+  ];
+  const ok = await ajouterLigneOngletUI("suivi_huiles", entetes, valeurs, document.getElementById("form-huiles"), "huiles-table-wrap");
+  if (ok) document.getElementById("huile-date").value = dateAujourdhuiIso();
+});
+
+// ---- Vérification thermomètre / sonde ----
+document.getElementById("sonde-date").value = dateAujourdhuiIso();
+document.getElementById("form-sondes").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const prochain = document.getElementById("sonde-prochain").value;
+  const entetes = ["Sonde", "Date", "Correction", "Prochain étalonnage", "Méthode eau bouillante", "Personne"];
+  const valeurs = [
+    document.getElementById("sonde-nom").value,
+    convertirDateIsoEnFr(document.getElementById("sonde-date").value),
+    document.getElementById("sonde-correction").value,
+    prochain ? convertirDateIsoEnFr(prochain) : "",
+    document.getElementById("sonde-methode-eau").checked ? "Conforme" : "",
+    PRENOM
+  ];
+  const ok = await ajouterLigneOngletUI("verif_sondes", entetes, valeurs, document.getElementById("form-sondes"), "sondes-table-wrap");
+  if (ok) document.getElementById("sonde-date").value = dateAujourdhuiIso();
+});
+
+// ---- Suivi de la décongélation (chap. 3) — alerte auto si > 72h ----
+document.getElementById("dec-date").value = dateAujourdhuiIso();
+document.getElementById("dec-debut-date").value = dateAujourdhuiIso();
+
+function verifierDecongelationNC() {
+  const dDate = document.getElementById("dec-debut-date").value, dHeure = document.getElementById("dec-debut-heure").value;
+  const fDate = document.getElementById("dec-fin-date").value, fHeure = document.getElementById("dec-fin-heure").value;
+  const zone = document.getElementById("dec-nc-zone");
+  if (dDate && dHeure && fDate && fHeure) {
+    const heures = (new Date(`${fDate}T${fHeure}`) - new Date(`${dDate}T${dHeure}`)) / 3600000;
+    zone.classList.toggle("hidden", !(heures > 72));
+  } else {
+    zone.classList.add("hidden");
+  }
+}
+["dec-debut-date", "dec-debut-heure", "dec-fin-date", "dec-fin-heure"].forEach(id => {
+  document.getElementById(id).addEventListener("change", verifierDecongelationNC);
+});
+
+document.getElementById("form-decongelation").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const dDate = document.getElementById("dec-debut-date").value, dHeure = document.getElementById("dec-debut-heure").value;
+  const fDate = document.getElementById("dec-fin-date").value, fHeure = document.getElementById("dec-fin-heure").value;
+  let dureeTxt = "", conformeTxt = "En cours";
+  if (dDate && dHeure && fDate && fHeure) {
+    const heures = (new Date(`${fDate}T${fHeure}`) - new Date(`${dDate}T${dHeure}`)) / 3600000;
+    dureeTxt = heures.toFixed(1) + "h";
+    conformeTxt = heures > 72 ? "NON CONFORME" : "Conforme";
+  }
+  const entetes = ["Date", "Produit", "Date début", "Heure début", "T° à cœur début", "Date fin", "Heure fin", "T° à cœur fin", "Durée", "Conforme", "Gestion NC", "Personne"];
+  const valeurs = [
+    convertirDateIsoEnFr(document.getElementById("dec-date").value),
+    document.getElementById("dec-produit").value,
+    dDate ? convertirDateIsoEnFr(dDate) : "", dHeure,
+    document.getElementById("dec-debut-temp").value,
+    fDate ? convertirDateIsoEnFr(fDate) : "", fHeure,
+    document.getElementById("dec-fin-temp").value,
+    dureeTxt, conformeTxt,
+    document.getElementById("dec-gestion-nc").value,
+    PRENOM
+  ];
+  const ok = await ajouterLigneOngletUI("suivi_decongelation", entetes, valeurs, document.getElementById("form-decongelation"), "decongel-table-wrap");
+  if (ok) {
+    document.getElementById("dec-date").value = dateAujourdhuiIso();
+    document.getElementById("dec-debut-date").value = dateAujourdhuiIso();
+    document.getElementById("dec-nc-zone").classList.add("hidden");
+  }
+});
+
+// ---- Autres constatations ponctuelles ----
+document.getElementById("constat-date").value = dateAujourdhuiIso();
+document.getElementById("form-constat-ponctuel").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const entetes = ["Date", "Constatation", "Analyse", "Action(s)", "Personne"];
+  const valeurs = [
+    convertirDateIsoEnFr(document.getElementById("constat-date").value),
+    document.getElementById("constat-texte").value,
+    document.getElementById("constat-analyse").value,
+    document.getElementById("constat-action").value,
+    PRENOM
+  ];
+  const ok = await ajouterLigneOngletUI("constat_ponctuel", entetes, valeurs, document.getElementById("form-constat-ponctuel"), "constat-ponctuel-table-wrap");
+  if (ok) document.getElementById("constat-date").value = dateAujourdhuiIso();
+});
+
 // ================= HISTORIQUE =================
 let currentHistTab = "feuille_enr";
 
@@ -2114,7 +2454,8 @@ async function chargerHistorique(onglet) {
       .map((h, i) => ({ h, i }))
       .filter(x => !colonnesAMasquer.includes(x.h))
       .map(x => x.i);
-    const peutSupprimer = onglet === "temp_enceintes" || onglet === "feuille_enr" || onglet === "envois";
+    const ONGLETS_REGISTRE_SUPPRIMABLES = ["nettoyage_ponctuel", "controle_visuel_hebdo", "suivi_huiles", "verif_sondes", "suivi_decongelation", "constat_ponctuel"];
+    const peutSupprimer = onglet === "temp_enceintes" || onglet === "feuille_enr" || onglet === "envois" || ONGLETS_REGISTRE_SUPPRIMABLES.includes(onglet);
 
     let html = "<table><thead><tr>";
     indicesAffiches.forEach(i => { html += `<th>${data.entetes[i]}</th>`; });
