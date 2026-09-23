@@ -46,6 +46,8 @@
     <button class="tab-btn" data-section="stocks"><span class="tab-ico">▤</span><span>Stocks</span></button>
     <button class="tab-btn" data-section="menu"><span class="tab-ico">▦</span><span>Menu</span></button>
     <button class="tab-btn" data-section="enr"><span class="tab-ico">▧</span><span>Feuille ENR</span></button>
+    <button class="tab-btn" data-section="hebdo"><span class="tab-ico">❖</span><span>Hebdomadaire</span></button>
+    <button class="tab-btn" data-section="ponctuel"><span class="tab-ico">✦</span><span>Ponctuel</span></button>
     <button class="tab-btn" data-section="historique"><span class="tab-ico">≡</span><span>Historique</span></button>
   </nav>
 
@@ -256,6 +258,178 @@
       </div>
     </section>
 
+    <!-- ================= ENREGISTREMENT HEBDOMADAIRE ================= -->
+    <section id="section-hebdo" class="panel">
+      <h2 class="panel-title">Enregistrement hebdomadaire</h2>
+      <div class="subtabs" id="hebdo-tabs">
+        <button class="subtab-btn active" data-sub="nettoyage">Nettoyage ponctuel</button>
+        <button class="subtab-btn" data-sub="controle">Contrôle visuel</button>
+      </div>
+
+      <div id="hebdo-sub-nettoyage" class="subpanel active">
+        <p class="dashboard-note" style="margin-top:-6px">Nettoyage de chap. 3 — une ligne par surface nettoyée (ou à signaler comme non réalisée).</p>
+        <form id="form-nettoyage" class="card-form">
+          <div class="form-row-2">
+            <label>Date
+              <input type="date" id="nett-date" required>
+            </label>
+            <label>Surface nettoyée
+              <input type="text" id="nett-surface" placeholder="Ex. plan de travail, armoire froide…" required>
+            </label>
+          </div>
+          <label class="ucp-toggle">
+            <input type="checkbox" id="nett-realise" checked>
+            <span>Nettoyage réalisé</span>
+          </label>
+          <label>Constatation / action corrective <em>— si non réalisé ou anomalie constatée</em>
+            <input type="text" id="nett-constat" placeholder="Facultatif">
+          </label>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+        <div id="nett-table-wrap" class="table-wrap registre-table-wrap"></div>
+      </div>
+
+      <div id="hebdo-sub-controle" class="subpanel">
+        <p class="dashboard-note" style="margin-top:-6px">Contrôle visuel hebdomadaire du nettoyage, zone par zone. Coche C (conforme), NC (non conforme) ou NO (non observé) pour chaque point ; une remarque apparaît automatiquement si NC est sélectionné.</p>
+        <form id="form-controle-visuel" class="card-form">
+          <div class="form-row-2">
+            <label>Date du contrôle
+              <input type="date" id="ctrl-date" required>
+            </label>
+            <label>Responsable du contrôle
+              <input type="text" id="ctrl-responsable" placeholder="Nom" required>
+            </label>
+          </div>
+          <div id="ctrl-visuel-zones"></div>
+          <button type="submit" class="btn-primary">Enregistrer le contrôle</button>
+        </form>
+        <div id="ctrl-table-wrap" class="table-wrap registre-table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- ================= ENREGISTREMENT PONCTUEL ================= -->
+    <section id="section-ponctuel" class="panel">
+      <h2 class="panel-title">Enregistrement ponctuel</h2>
+      <div class="subtabs" id="ponctuel-tabs">
+        <button class="subtab-btn active" data-sub="huiles">Huiles de friture</button>
+        <button class="subtab-btn" data-sub="sondes">Vérif. sonde</button>
+        <button class="subtab-btn" data-sub="decongelation">Décongélation</button>
+        <button class="subtab-btn" data-sub="constat">Autres constats</button>
+      </div>
+
+      <div id="ponctuel-sub-huiles" class="subpanel active">
+        <form id="form-huiles" class="card-form">
+          <div class="form-row-2">
+            <label>Date
+              <input type="date" id="huile-date" required>
+            </label>
+            <label>Durée d'utilisation friteuse
+              <input type="text" id="huile-duree" placeholder="Ex. 6h">
+            </label>
+          </div>
+          <div class="form-row-3">
+            <label class="ucp-toggle"><input type="checkbox" id="huile-filtration"><span>Filtration effectuée</span></label>
+            <label class="ucp-toggle"><input type="checkbox" id="huile-changement"><span>Changement d'huile effectué</span></label>
+            <label class="ucp-toggle"><input type="checkbox" id="huile-nettoyage"><span>Nettoyage friteuse effectué</span></label>
+          </div>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+        <p class="dashboard-note">Filtration : après chaque utilisation · Changement d'huile : toutes les 20h d'utilisation ou 6 semaines · Nettoyage complet : à chaque changement d'huile.</p>
+        <div id="huiles-table-wrap" class="table-wrap registre-table-wrap"></div>
+      </div>
+
+      <div id="ponctuel-sub-sondes" class="subpanel">
+        <form id="form-sondes" class="card-form">
+          <div class="form-row-2">
+            <label>Sonde / thermomètre
+              <input type="text" id="sonde-nom" placeholder="Ex. Sonde n°1" required>
+            </label>
+            <label>Date
+              <input type="date" id="sonde-date" required>
+            </label>
+          </div>
+          <label>Correction
+            <input type="text" id="sonde-correction" placeholder="Ex. -0,5°C, aucune…">
+          </label>
+          <div class="form-row-2">
+            <label>Prochain étalonnage
+              <input type="date" id="sonde-prochain">
+            </label>
+            <label class="ucp-toggle" style="margin-top:20px">
+              <input type="checkbox" id="sonde-methode-eau">
+              <span>Méthode eau bouillante conforme</span>
+            </label>
+          </div>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+        <div id="sondes-table-wrap" class="table-wrap registre-table-wrap"></div>
+      </div>
+
+      <div id="ponctuel-sub-decongelation" class="subpanel">
+        <p class="dashboard-note" style="margin-top:-6px">La décongélation ne peut excéder 72 heures. Tout produit décongelé ne peut être recongelé.</p>
+        <form id="form-decongelation" class="card-form">
+          <div class="form-row-2">
+            <label>Date
+              <input type="date" id="dec-date" required>
+            </label>
+            <label>Produit
+              <input type="text" id="dec-produit" placeholder="Nom du produit" required>
+            </label>
+          </div>
+          <h4 class="registre-souszone-titre">Début de décongélation</h4>
+          <div class="form-row-3">
+            <label>Date
+              <input type="date" id="dec-debut-date" required>
+            </label>
+            <label>Heure
+              <input type="time" id="dec-debut-heure" required>
+            </label>
+            <label>T° à cœur
+              <input type="text" inputmode="decimal" id="dec-debut-temp" placeholder="°C">
+            </label>
+          </div>
+          <h4 class="registre-souszone-titre">Fin de décongélation <em>— à compléter dès que connue</em></h4>
+          <div class="form-row-3">
+            <label>Date
+              <input type="date" id="dec-fin-date">
+            </label>
+            <label>Heure
+              <input type="time" id="dec-fin-heure">
+            </label>
+            <label>T° à cœur
+              <input type="text" inputmode="decimal" id="dec-fin-temp" placeholder="°C">
+            </label>
+          </div>
+          <div id="dec-nc-zone" class="hidden">
+            <label>Gestion de la non-conformité <em>— durée de décongélation &gt; 72h</em>
+              <textarea id="dec-gestion-nc" class="gestion-nc-champ" placeholder="Action mise en place…"></textarea>
+            </label>
+          </div>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+        <div id="decongel-table-wrap" class="table-wrap registre-table-wrap"></div>
+      </div>
+
+      <div id="ponctuel-sub-constat" class="subpanel">
+        <form id="form-constat-ponctuel" class="card-form">
+          <label>Date
+            <input type="date" id="constat-date" required>
+          </label>
+          <label>Constatation
+            <input type="text" id="constat-texte" placeholder="Ce qui a été constaté" required>
+          </label>
+          <label>Analyse
+            <input type="text" id="constat-analyse" placeholder="Cause probable">
+          </label>
+          <label>Action(s)
+            <input type="text" id="constat-action" placeholder="Action(s) mise(s) en place">
+          </label>
+          <button type="submit" class="btn-primary">Enregistrer</button>
+        </form>
+        <div id="constat-ponctuel-table-wrap" class="table-wrap registre-table-wrap"></div>
+      </div>
+    </section>
+
     <!-- ================= HISTORIQUE ================= -->
     <section id="section-historique" class="panel">
       <h2 class="panel-title">Historique</h2>
@@ -264,6 +438,12 @@
         <button class="subtab-btn" data-hist="tracabilite_photos">Traçabilité</button>
         <button class="subtab-btn" data-hist="temp_enceintes">Enceintes</button>
         <button class="subtab-btn" data-hist="envois">Envois</button>
+        <button class="subtab-btn" data-hist="nettoyage_ponctuel">Nettoyage</button>
+        <button class="subtab-btn" data-hist="controle_visuel_hebdo">Contrôle visuel</button>
+        <button class="subtab-btn" data-hist="suivi_huiles">Huiles</button>
+        <button class="subtab-btn" data-hist="verif_sondes">Sondes</button>
+        <button class="subtab-btn" data-hist="suivi_decongelation">Décongélation</button>
+        <button class="subtab-btn" data-hist="constat_ponctuel">Constats ponctuels</button>
       </div>
       <div id="hist-filtre-date-zone" class="hist-filtre-date-zone hidden">
         <label>Filtrer par date
